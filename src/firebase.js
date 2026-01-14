@@ -1,14 +1,14 @@
 import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs, setDoc, getDoc, doc, onSnapshot, query, orderBy, limit, deleteDoc, updateDoc, increment } from "firebase/firestore";
+import { getFirestore, collection, getDocs, setDoc, getDoc, doc, onSnapshot, query, orderBy, limit, deleteDoc, updateDoc, increment, where } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "AIzaSyCkKT-7q7NAOfk30bzNaYO9_9sbnHcQZ9A",
-  authDomain: "hog-games.firebaseapp.com",
-  projectId: "hog-games",
-  storageBucket: "hog-games.firebasestorage.app",
-  messagingSenderId: "122388509250",
-  appId: "1:122388509250:web:54730f3ceb761b0f5473db",
-  measurementId: "G-EXK6522Q3Y"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
+  measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -276,6 +276,147 @@ export const updateChallengeCompletion = async (playerName, challengeId) => {
     return true;
   }
   return false;
+};
+
+// ============ QUIZ QUESTIONS FUNCTIONS ============
+
+// Get all quiz questions (for admin)
+export const getAllQuizQuestions = async () => {
+  const questionsRef = collection(db, 'quizQuestions');
+  const q = query(questionsRef, orderBy('order', 'asc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Subscribe to quiz questions (real-time)
+export const subscribeToQuizQuestions = (callback) => {
+  const questionsRef = collection(db, 'quizQuestions');
+  const q = query(questionsRef, orderBy('order', 'asc'));
+
+  return onSnapshot(q, (snapshot) => {
+    const questions = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    callback(questions);
+  });
+};
+
+// Get enabled quiz questions only (for players)
+export const getEnabledQuizQuestions = async () => {
+  const questionsRef = collection(db, 'quizQuestions');
+  const q = query(questionsRef, where('enabled', '==', true), orderBy('order', 'asc'));
+  const snapshot = await getDocs(q);
+  return snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+};
+
+// Add a new quiz question
+export const addQuizQuestion = async (question, answer, order) => {
+  const docId = `q_${Date.now()}`;
+  const questionRef = doc(db, 'quizQuestions', docId);
+
+  await setDoc(questionRef, {
+    question,
+    answer,
+    order,
+    enabled: true,
+    createdAt: Date.now()
+  });
+
+  return docId;
+};
+
+// Update a quiz question
+export const updateQuizQuestion = async (questionId, updates) => {
+  const questionRef = doc(db, 'quizQuestions', questionId);
+  await updateDoc(questionRef, updates);
+};
+
+// Delete a quiz question
+export const deleteQuizQuestion = async (questionId) => {
+  const questionRef = doc(db, 'quizQuestions', questionId);
+  await deleteDoc(questionRef);
+};
+
+// Toggle quiz question enabled status
+export const toggleQuizQuestion = async (questionId, enabled) => {
+  const questionRef = doc(db, 'quizQuestions', questionId);
+  await updateDoc(questionRef, { enabled });
+};
+
+// Reorder quiz questions
+export const reorderQuizQuestions = async (questions) => {
+  const updatePromises = questions.map((q, index) => {
+    const questionRef = doc(db, 'quizQuestions', q.id);
+    return updateDoc(questionRef, { order: index + 1 });
+  });
+  await Promise.all(updatePromises);
+};
+
+// ============ ACHIEVEMENTS FUNCTIONS ============
+
+// Get player achievements
+export const getPlayerAchievements = async (playerName) => {
+  if (!playerName || playerName === 'Guest') return [];
+
+  const achievementsRef = doc(db, 'playerAchievements', playerName.toLowerCase());
+  const snapshot = await getDoc(achievementsRef);
+
+  if (snapshot.exists()) {
+    return snapshot.data().achievements || [];
+  }
+  return [];
+};
+
+// Subscribe to player achievements (real-time)
+export const subscribeToPlayerAchievements = (playerName, callback) => {
+  if (!playerName || playerName === 'Guest') {
+    callback([]);
+    return () => {};
+  }
+
+  const achievementsRef = doc(db, 'playerAchievements', playerName.toLowerCase());
+
+  return onSnapshot(achievementsRef, (snapshot) => {
+    if (snapshot.exists()) {
+      callback(snapshot.data().achievements || []);
+    } else {
+      callback([]);
+    }
+  });
+};
+
+// Save player achievements
+export const savePlayerAchievements = async (playerName, achievements) => {
+  if (!playerName || playerName === 'Guest') return;
+
+  const achievementsRef = doc(db, 'playerAchievements', playerName.toLowerCase());
+  await setDoc(achievementsRef, {
+    playerName: playerName.toLowerCase(),
+    achievements,
+    updatedAt: Date.now()
+  }, { merge: true });
+};
+
+// Add a new achievement to player
+export const addPlayerAchievement = async (playerName, achievementId) => {
+  if (!playerName || playerName === 'Guest') return;
+
+  const achievementsRef = doc(db, 'playerAchievements', playerName.toLowerCase());
+  const snapshot = await getDoc(achievementsRef);
+
+  let achievements = [];
+  if (snapshot.exists()) {
+    achievements = snapshot.data().achievements || [];
+  }
+
+  if (!achievements.includes(achievementId)) {
+    achievements.push(achievementId);
+    await setDoc(achievementsRef, {
+      playerName: playerName.toLowerCase(),
+      achievements,
+      updatedAt: Date.now()
+    }, { merge: true });
+  }
+
+  return achievements;
 };
 
 export { db };

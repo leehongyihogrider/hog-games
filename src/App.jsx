@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Sparkles, Hammer, Zap, Globe, Calculator, Users, BarChart3, Shield, Columns3, Home, Search, Music, ArrowUpDown, Trophy, Grid3x3 } from 'lucide-react';
+import { Brain, Sparkles, Hammer, Zap, Globe, Calculator, Users, BarChart3, Shield, Columns3, Home, Search, Music, ArrowUpDown, Trophy, Grid3x3, HelpCircle } from 'lucide-react';
 import MemoryGame from './components/MemoryGame';
 import WhackAMole from './components/WhackAMole';
 import ColorSequence from './components/ColourSequence';
@@ -9,6 +9,7 @@ import Connect4 from './components/Connect4';
 import WordSearch from './components/WordSearch';
 import RhythmGame from './components/RhythmGame';
 import NumberSorting from './components/NumberSorting';
+import QuizGame from './components/QuizGame';
 import Statistics from './components/Statistics';
 import Achievements from './components/Achievements';
 import AdminPanel from './components/AdminPanel';
@@ -193,6 +194,9 @@ const translations = {
     challenge: 'Challenge',
     target: 'Target',
     challengeHint: 'New challenges appear every day! Come back tomorrow for more!',
+    completed: 'Done!',
+    inProgress: 'In Progress',
+    allChallengesComplete: "Amazing! You've completed all today's challenges!",
 
     // Achievement Categories
     starterCategory: 'First Steps',
@@ -250,7 +254,26 @@ const translations = {
     fast: 'Fast',
     pause: 'Pause',
     resume: 'Resume',
-    paused: 'Paused'
+    paused: 'Paused',
+
+    // Quiz Game
+    quiz: 'Quiz',
+    quizDesc: 'Answer questions set by admin',
+    quizTip: 'Read each question carefully and type your answer. Numbers can be entered with or without currency symbols!',
+    noQuizQuestions: 'No Quiz Questions Available',
+    noQuizQuestionsDesc: 'Please ask an admin to add some questions.',
+    quizComplete: 'Quiz Complete!',
+    reviewAnswers: 'Review Your Answers',
+    yourAnswer: 'Your answer',
+    correctAnswer: 'Correct answer',
+    typeYourAnswer: 'Type your answer here...',
+    submitAnswer: 'Submit Answer',
+    correct: 'Correct!',
+    incorrect: 'Incorrect',
+    theAnswerWas: 'The answer was',
+    nextQuestion: 'Next Question',
+    seeResults: 'See Results',
+    loading: 'Loading...'
   },
   zh: {
     title: '脑力游戏',
@@ -414,6 +437,9 @@ const translations = {
     challenge: '挑战',
     target: '目标',
     challengeHint: '每天都有新挑战！明天再来吧！',
+    completed: '完成！',
+    inProgress: '进行中',
+    allChallengesComplete: '太棒了！你已完成今天所有挑战！',
 
     // Achievement Categories
     starterCategory: '初次尝试',
@@ -462,6 +488,24 @@ const translations = {
     challengeMathMedium: '在数学挑战中等模式中得分15+',
     challengeNumberSortingEasy: '在数字排序简单模式中获得3颗星',
 
+    // Quiz Game
+    quiz: '问答',
+    quizDesc: '回答管理员设置的问题',
+    quizTip: '仔细阅读每个问题并输入答案。数字可以带或不带货币符号输入！',
+    noQuizQuestions: '没有可用的问答题',
+    noQuizQuestionsDesc: '请联系管理员添加问题。',
+    quizComplete: '问答完成！',
+    reviewAnswers: '查看您的答案',
+    yourAnswer: '您的答案',
+    correctAnswer: '正确答案',
+    typeYourAnswer: '在此输入您的答案...',
+    submitAnswer: '提交答案',
+    correct: '正确！',
+    incorrect: '错误',
+    theAnswerWas: '正确答案是',
+    nextQuestion: '下一题',
+    seeResults: '查看结果',
+    loading: '加载中...'
   }
 };
 
@@ -927,6 +971,17 @@ function App() {
                   <p className="text-3xl font-normal">{t.multiplayerDesc}</p>
                 </div>
               </button>
+
+              <button
+                onClick={() => { soundPlayer.playClick(); setGameMode('quiz'); setCurrentGame('quiz'); }}
+                className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white p-16 rounded-3xl text-6xl font-bold transition-all transform hover:scale-105 shadow-2xl"
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <HelpCircle size={96} className="mb-4" />
+                  <span>{t.quiz}</span>
+                  <p className="text-3xl font-normal">{t.quizDesc}</p>
+                </div>
+              </button>
             </div>
           </div>
         </div>
@@ -1024,26 +1079,64 @@ function App() {
 
             {/* Daily Challenges Section - Only for logged-in users */}
             {!isGuestMode && dailyChallenges.length > 0 && (
-              <div className="mb-8 bg-gradient-to-r from-purple-100 to-pink-100 border-4 border-purple-300 rounded-2xl p-6">
-                <h3 className="text-4xl font-bold text-purple-800 mb-4 flex items-center justify-center gap-3">
-                  🎯 {t.todaysChallenges}
-                </h3>
-                <div className="space-y-3">
-                  {dailyChallenges.map((challenge, index) => (
-                    <div key={challenge.id} className="bg-white rounded-xl p-4 border-2 border-purple-200">
+              <div className="mb-8 bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50 border-2 border-purple-200 rounded-3xl p-8 shadow-lg">
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-4xl font-bold bg-gradient-to-r from-purple-700 to-pink-600 bg-clip-text text-transparent flex items-center gap-3">
+                    🎯 {t.todaysChallenges}
+                  </h3>
+                  <div className="bg-purple-100 px-4 py-2 rounded-full">
+                    <span className="text-2xl font-bold text-purple-700">
+                      {dailyChallenges.filter(c => c.completed).length}/{dailyChallenges.length} ✓
+                    </span>
+                  </div>
+                </div>
+                <div className="space-y-4">
+                  {dailyChallenges.map((challenge) => (
+                    <div
+                      key={challenge.id}
+                      className={`rounded-2xl p-5 transition-all ${
+                        challenge.completed
+                          ? 'bg-gradient-to-r from-green-100 to-emerald-100 border-2 border-green-300'
+                          : 'bg-white/80 border-2 border-purple-100 hover:border-purple-300'
+                      }`}
+                    >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="text-4xl">{challenge.icon}</span>
+                        <div className="flex items-center gap-4">
+                          <div className={`text-5xl p-2 rounded-xl ${challenge.completed ? 'bg-green-200' : 'bg-purple-100'}`}>
+                            {challenge.icon}
+                          </div>
                           <div>
-                            <p className="text-2xl font-bold text-gray-800">{challenge.desc}</p>
-                            <p className="text-xl text-gray-600">🎯 {t.target}: {challenge.target}</p>
+                            <p className={`text-2xl font-bold ${challenge.completed ? 'text-green-700 line-through' : 'text-gray-800'}`}>
+                              {challenge.desc}
+                            </p>
+                            <p className={`text-xl ${challenge.completed ? 'text-green-600' : 'text-purple-600'}`}>
+                              {t.target}: {challenge.target}
+                            </p>
                           </div>
                         </div>
+                        {challenge.completed ? (
+                          <div className="bg-green-500 text-white px-5 py-3 rounded-xl flex items-center gap-2 shadow-md">
+                            <span className="text-3xl">✓</span>
+                            <span className="text-xl font-bold">{t.completed || 'Done!'}</span>
+                          </div>
+                        ) : (
+                          <div className="bg-purple-200 text-purple-700 px-5 py-3 rounded-xl">
+                            <span className="text-xl font-medium">{t.inProgress || 'In Progress'}</span>
+                          </div>
+                        )}
                       </div>
                     </div>
                   ))}
                 </div>
-                <p className="text-center text-purple-700 text-xl mt-4">💡 {t.challengeHint}</p>
+                {dailyChallenges.every(c => c.completed) ? (
+                  <p className="text-center text-green-600 text-2xl mt-6 font-bold">
+                    🎉 {t.allChallengesComplete || "Amazing! You've completed all today's challenges!"}
+                  </p>
+                ) : (
+                  <p className="text-center text-purple-600 text-xl mt-6 opacity-80">
+                    💡 {t.challengeHint}
+                  </p>
+                )}
               </div>
             )}
 
@@ -1338,6 +1431,15 @@ function App() {
         />
       )}
 
+      {currentGame === 'quiz' && (
+        <QuizGame
+          goHome={() => { setCurrentGame(null); setGameMode(null); }}
+          language={language}
+          translations={translations}
+          playerName={playerName}
+        />
+      )}
+
       {currentGame === 'statistics' && (
         <Statistics
           goHome={() => setCurrentGame(null)}
@@ -1356,6 +1458,7 @@ function App() {
           translations={translations}
           playerName={playerName}
           stats={getAchievementStats()}
+          dailyChallenges={dailyChallenges}
         />
       )}
 
@@ -1364,6 +1467,18 @@ function App() {
           goHome={() => setCurrentGame(null)}
           leaderboard={leaderboard}
         />
+      )}
+
+      {/* Persistent Admin Button - Bottom Left Corner */}
+      {currentGame !== 'admin' && (
+        <button
+          onClick={() => { soundPlayer.playClick(); setCurrentGame('admin'); }}
+          className="fixed bottom-6 left-6 bg-gradient-to-r from-slate-700 to-slate-800 hover:from-slate-800 hover:to-slate-900 text-white p-4 rounded-2xl shadow-lg hover:shadow-xl transition-all transform hover:scale-105 flex items-center gap-3 z-50 opacity-80 hover:opacity-100"
+          title="Admin Panel"
+        >
+          <Shield size={28} />
+          <span className="text-xl font-bold hidden sm:inline">Admin</span>
+        </button>
       )}
     </div>
   );

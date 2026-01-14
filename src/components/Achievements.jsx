@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Trophy, Award, Star, Target, Calendar, Zap, Home } from 'lucide-react';
+import { subscribeToPlayerAchievements, savePlayerAchievements } from '../firebase';
 
-const Achievements = ({ goHome, language, translations, playerName, stats }) => {
+const Achievements = ({ goHome, language, translations, playerName, stats, dailyChallenges: propChallenges }) => {
   const t = translations[language];
   const [achievements, setAchievements] = useState([]);
   const [dailyChallenges, setDailyChallenges] = useState([]);
@@ -35,17 +36,23 @@ const Achievements = ({ goHome, language, translations, playerName, stats }) => 
     { id: 'ten_challenges', name: t.tenChallenges || 'Challenge Master', desc: t.tenChallengesDesc || 'Complete 10 daily challenges', icon: '🏆', category: 'challenges', checkFn: (stats) => stats.challengesCompleted >= 10 },
   ];
 
-  // Load achievements from localStorage
+  // Subscribe to achievements from Firebase
   useEffect(() => {
-    const saved = localStorage.getItem(`${playerName}_achievements`);
-    if (saved) {
-      setAchievements(JSON.parse(saved));
+    if (!playerName || playerName === 'Guest') {
+      setAchievements([]);
+      return;
     }
+
+    const unsubscribe = subscribeToPlayerAchievements(playerName, (firebaseAchievements) => {
+      setAchievements(firebaseAchievements);
+    });
+
+    return () => unsubscribe();
   }, [playerName]);
 
-  // Check and update achievements
+  // Check and update achievements - save to Firebase
   useEffect(() => {
-    if (!stats) return;
+    if (!stats || !playerName || playerName === 'Guest') return;
 
     const unlockedAchievements = [];
     achievementList.forEach(achievement => {
@@ -56,25 +63,19 @@ const Achievements = ({ goHome, language, translations, playerName, stats }) => 
 
     if (unlockedAchievements.length > 0) {
       const newAchievements = [...achievements, ...unlockedAchievements];
-      setAchievements(newAchievements);
-      localStorage.setItem(`${playerName}_achievements`, JSON.stringify(newAchievements));
+      // Save to Firebase
+      savePlayerAchievements(playerName, newAchievements).catch(err => {
+        console.error('Failed to save achievements to Firebase:', err);
+      });
     }
-  }, [stats, playerName]);
+  }, [stats, playerName, achievements]);
 
-  // Generate daily challenges
+  // Use daily challenges from props (already managed by App.jsx via Firebase)
   useEffect(() => {
-    const today = new Date().toDateString();
-    const savedChallenges = localStorage.getItem(`dailyChallenges_${today}`);
-
-    if (savedChallenges) {
-      setDailyChallenges(JSON.parse(savedChallenges));
-    } else {
-      // Generate new challenges for today
-      const challenges = generateDailyChallenges();
-      setDailyChallenges(challenges);
-      localStorage.setItem(`dailyChallenges_${today}`, JSON.stringify(challenges));
+    if (propChallenges && propChallenges.length > 0) {
+      setDailyChallenges(propChallenges);
     }
-  }, []);
+  }, [propChallenges]);
 
   const generateDailyChallenges = () => {
     const allChallenges = [
