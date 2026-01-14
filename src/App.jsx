@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Brain, Sparkles, Hammer, Zap, Globe, Calculator, Users, BarChart3, Shield, Columns3, Home, Search, Music, ArrowUpDown, Trophy } from 'lucide-react';
 import MemoryGame from './components/MemoryGame';
 import WhackAMole from './components/WhackAMole';
@@ -13,6 +13,7 @@ import Statistics from './components/Statistics';
 import Achievements from './components/Achievements';
 import AdminPanel from './components/AdminPanel';
 import soundPlayer from './utils/sounds';
+import { subscribeToLeaderboard, addScore } from './firebase';
 import './App.css';
 
 // Translations
@@ -538,25 +539,46 @@ function App() {
     }
   }, [isGuestMode, playerName, language]);
 
-  // Load leaderboard from localStorage on initial mount
-  const [leaderboard, setLeaderboard] = useState(() => {
-    const savedLeaderboard = localStorage.getItem('hogGamesLeaderboard');
-    if (savedLeaderboard) {
-      try {
-        return JSON.parse(savedLeaderboard);
-      } catch (e) {
-        console.error('Failed to parse leaderboard data:', e);
-      }
-    }
-    return {
-      memory: [],
-      whack: [],
-      sequence: [],
-      math: [],
-      wordsearch: [],
-      numbersorting: []
-    };
+  // Leaderboard state - now synced with Firebase
+  const [leaderboard, setLeaderboard] = useState({
+    memory: [],
+    whack: [],
+    sequence: [],
+    math: [],
+    wordsearch: [],
+    numbersorting: []
   });
+
+  // Subscribe to Firebase leaderboards on mount
+  useEffect(() => {
+    const games = ['memory', 'whack', 'sequence', 'math', 'wordsearch', 'numbersorting'];
+    const unsubscribes = [];
+
+    games.forEach(game => {
+      const unsubscribe = subscribeToLeaderboard(game, (scores) => {
+        // Sort scores: by difficulty first (hard > medium > easy), then by score
+        const sortedScores = scores.sort((a, b) => {
+          const difficultyOrder = { 'hard': 3, 'medium': 2, 'easy': 1 };
+          const aDiff = difficultyOrder[a.difficulty] || 0;
+          const bDiff = difficultyOrder[b.difficulty] || 0;
+
+          if (aDiff !== bDiff) return bDiff - aDiff;
+
+          // For memory, wordsearch, numbersorting: lower is better
+          if (game === 'memory' || game === 'wordsearch' || game === 'numbersorting') {
+            return a.score - b.score;
+          }
+          // For others: higher is better
+          return b.score - a.score;
+        }).slice(0, 10);
+
+        setLeaderboard(prev => ({ ...prev, [game]: sortedScores }));
+      });
+      unsubscribes.push(unsubscribe);
+    });
+
+    return () => unsubscribes.forEach(unsub => unsub());
+  }, []);
   
   const handleSaveName = () => {
     if (playerName.trim()) {
@@ -878,7 +900,7 @@ function App() {
     }
   };
 
-  const addToLeaderboard = (game, playerNameParam, score, difficulty, time = null) => {
+  const addToLeaderboard = async (game, playerNameParam, score, difficulty, time = null) => {
     // Track statistics (skips for guest mode)
     trackGameStats(game, score, difficulty);
 
@@ -888,94 +910,12 @@ function App() {
     // Skip saving to leaderboard for guest mode
     if (isGuestMode || playerNameParam === 'Guest') return;
 
-    setLeaderboard(prev => {
-      const gameLeaderboard = [...(prev[game] || [])];
-
-      // Find existing entry for this player
-      const existingIndex = gameLeaderboard.findIndex(
-        entry => entry.name.toLowerCase() === playerNameParam.toLowerCase()
-      );
-
-      const newEntry = {
-        name: playerNameParam,
-        score: score,
-        difficulty: difficulty,
-        date: new Date().toLocaleDateString(),
-        ...(time !== null && { time: time }) // Add time if provided
-      };
-
-      if (existingIndex !== -1) {
-        // Player exists - update if better (always prioritize difficulty first)
-        const existing = gameLeaderboard[existingIndex];
-        let shouldUpdate = false;
-
-        const difficultyOrder = { 'hard': 3, 'medium': 2, 'easy': 1 };
-        const newDiff = difficultyOrder[difficulty] || 0;
-        const existingDiff = difficultyOrder[existing.difficulty] || 0;
-
-        if (newDiff > existingDiff) {
-          // New entry has higher difficulty - always update
-          shouldUpdate = true;
-        } else if (newDiff === existingDiff) {
-          // Same difficulty - check score based on game type
-          if (game === 'memory' || game === 'wordsearch' || game === 'numbersorting') {
-            // For these games: lower score/time is better
-            if (score < existing.score) {
-              shouldUpdate = true;
-            } else if (score === existing.score && time && existing.time && time < existing.time) {
-              shouldUpdate = true;
-            }
-          } else {
-            // For other games: higher score is better
-            shouldUpdate = score > existing.score;
-          }
-        }
-        // If newDiff < existingDiff, don't update (lower difficulty is worse)
-
-        if (shouldUpdate) {
-          gameLeaderboard[existingIndex] = newEntry;
-        }
-      } else {
-        // New player - add entry
-        gameLeaderboard.push(newEntry);
-      }
-
-      // Sort by difficulty first, then by score
-      const sortedLeaderboard = gameLeaderboard
-        .sort((a, b) => {
-          // Always sort by difficulty first
-          const difficultyOrder = { 'hard': 3, 'medium': 2, 'easy': 1 };
-          const aDiff = difficultyOrder[a.difficulty] || 0;
-          const bDiff = difficultyOrder[b.difficulty] || 0;
-
-          // Higher difficulty is better
-          if (aDiff !== bDiff) return bDiff - aDiff;
-
-          // Same difficulty: sort by score
-          if (game === 'memory' || game === 'wordsearch' || game === 'numbersorting') {
-            // For memory, wordsearch, and numbersorting: lower score (time/moves) is better
-            if (a.score !== b.score) return a.score - b.score;
-
-            // Same score: lower time is better
-            if (a.time && b.time) return a.time - b.time;
-            return 0;
-          } else {
-            // For other games: higher score is better
-            return b.score - a.score;
-          }
-        })
-        .slice(0, 10);
-
-      const updatedLeaderboard = {
-        ...prev,
-        [game]: sortedLeaderboard
-      };
-
-      // Save to localStorage
-      localStorage.setItem('hogGamesLeaderboard', JSON.stringify(updatedLeaderboard));
-
-      return updatedLeaderboard;
-    });
+    // Save to Firebase - the real-time subscription will update the local state
+    try {
+      await addScore(game, playerNameParam, score, difficulty, time);
+    } catch (error) {
+      console.error('Failed to save score to Firebase:', error);
+    }
   };
 
   const t = translations[language];
