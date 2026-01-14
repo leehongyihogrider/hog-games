@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Grid3x3, ArrowLeft, Star } from 'lucide-react';
+import soundPlayer from '../utils/sounds';
 
 const TicTacToe = ({ goHome, language, translations }) => {
   const t = translations[language];

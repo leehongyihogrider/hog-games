@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Columns3, ArrowLeft, Star } from 'lucide-react';
+import soundPlayer from '../utils/sounds';
 
 const Connect4 = ({ goHome, language, translations }) => {
   const t = translations[language];

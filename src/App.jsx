@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Brain, Sparkles, Hammer, Zap, Globe, Calculator, Users, BarChart3, Shield, Columns3, Home, Search, Music, ArrowUpDown, Trophy } from 'lucide-react';
+import { Brain, Sparkles, Hammer, Zap, Globe, Calculator, Users, BarChart3, Shield, Columns3, Home, Search, Music, ArrowUpDown, Trophy, Grid3x3 } from 'lucide-react';
 import MemoryGame from './components/MemoryGame';
 import WhackAMole from './components/WhackAMole';
 import ColorSequence from './components/ColourSequence';
