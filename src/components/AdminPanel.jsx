@@ -1,11 +1,13 @@
 import { useState } from 'react';
 import { Shield, Trash2, Home, AlertTriangle } from 'lucide-react';
+import { clearGameLeaderboard } from '../firebase';
 
-const AdminPanel = ({ goHome, leaderboard, setLeaderboard }) => {
+const AdminPanel = ({ goHome, leaderboard }) => {
   const [password, setPassword] = useState('');
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(null);
+  const [isClearing, setIsClearing] = useState(false);
 
   const ADMIN_PASSWORD = 'admin123'; // Simple password for demo
 
@@ -19,35 +21,42 @@ const AdminPanel = ({ goHome, leaderboard, setLeaderboard }) => {
     }
   };
 
-  const clearLeaderboard = (game) => {
-    const updatedLeaderboard = {
-      ...leaderboard,
-      [game]: []
-    };
-    setLeaderboard(updatedLeaderboard);
-    localStorage.setItem('hogGamesLeaderboard', JSON.stringify(updatedLeaderboard));
-    setShowConfirm(null);
-    alert(`${game.charAt(0).toUpperCase() + game.slice(1)} leaderboard cleared!`);
+  const clearLeaderboard = async (game) => {
+    setIsClearing(true);
+    try {
+      await clearGameLeaderboard(game);
+      setShowConfirm(null);
+      alert(`${gameNames[game] || game} leaderboard cleared!`);
+    } catch (err) {
+      console.error('Failed to clear leaderboard:', err);
+      alert('Failed to clear leaderboard. Please try again.');
+    } finally {
+      setIsClearing(false);
+    }
   };
 
-  const clearAllLeaderboards = () => {
-    const emptyLeaderboard = {
-      memory: [],
-      whack: [],
-      sequence: [],
-      math: []
-    };
-    setLeaderboard(emptyLeaderboard);
-    localStorage.setItem('hogGamesLeaderboard', JSON.stringify(emptyLeaderboard));
-    setShowConfirm(null);
-    alert('All leaderboards cleared!');
+  const clearAllLeaderboards = async () => {
+    setIsClearing(true);
+    try {
+      const games = ['memory', 'whack', 'sequence', 'math', 'wordsearch', 'numbersorting'];
+      await Promise.all(games.map(game => clearGameLeaderboard(game)));
+      setShowConfirm(null);
+      alert('All leaderboards cleared!');
+    } catch (err) {
+      console.error('Failed to clear all leaderboards:', err);
+      alert('Failed to clear leaderboards. Please try again.');
+    } finally {
+      setIsClearing(false);
+    }
   };
 
   const gameNames = {
     memory: 'Memory Cards',
     whack: 'Whack-a-Mole',
     sequence: 'Color Sequence',
-    math: 'Math Challenge'
+    math: 'Math Challenge',
+    wordsearch: 'Word Search',
+    numbersorting: 'Number Sorting'
   };
 
   if (!isAuthenticated) {
@@ -113,30 +122,32 @@ const AdminPanel = ({ goHome, leaderboard, setLeaderboard }) => {
 
         <div className="mb-10">
           <h2 className="text-5xl font-bold text-gray-800 mb-6">Manage Leaderboards</h2>
-          <p className="text-3xl text-gray-600 mb-8">Clear individual game leaderboards or all at once</p>
+          <p className="text-3xl text-gray-600 mb-8">Clear individual game leaderboards or all at once (Firebase)</p>
         </div>
 
         <div className="space-y-6">
-          {Object.keys(leaderboard).map((game) => (
+          {Object.keys(gameNames).map((game) => (
             <div key={game} className="bg-gray-50 rounded-3xl p-8 border-2 border-gray-300">
               <div className="flex justify-between items-center">
                 <div>
                   <h3 className="text-4xl font-bold text-gray-800">{gameNames[game]}</h3>
                   <p className="text-2xl text-gray-600 mt-2">
-                    {leaderboard[game].length} {leaderboard[game].length === 1 ? 'entry' : 'entries'}
+                    {(leaderboard[game] || []).length} {(leaderboard[game] || []).length === 1 ? 'entry' : 'entries'}
                   </p>
                 </div>
                 {showConfirm === game ? (
                   <div className="flex gap-4">
                     <button
                       onClick={() => clearLeaderboard(game)}
-                      className="bg-red-600 hover:bg-red-700 text-white px-8 py-5 rounded-2xl text-3xl font-bold transition-colors flex items-center gap-3"
+                      disabled={isClearing}
+                      className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-8 py-5 rounded-2xl text-3xl font-bold transition-colors flex items-center gap-3"
                     >
                       <AlertTriangle size={36} />
-                      Confirm Clear
+                      {isClearing ? 'Clearing...' : 'Confirm Clear'}
                     </button>
                     <button
                       onClick={() => setShowConfirm(null)}
+                      disabled={isClearing}
                       className="bg-gray-500 hover:bg-gray-600 text-white px-8 py-5 rounded-2xl text-3xl font-bold transition-colors"
                     >
                       Cancel
@@ -145,7 +156,7 @@ const AdminPanel = ({ goHome, leaderboard, setLeaderboard }) => {
                 ) : (
                   <button
                     onClick={() => setShowConfirm(game)}
-                    disabled={leaderboard[game].length === 0}
+                    disabled={(leaderboard[game] || []).length === 0}
                     className="bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white px-10 py-6 rounded-2xl text-3xl font-bold transition-colors flex items-center gap-4"
                   >
                     <Trash2 size={40} />
@@ -164,13 +175,15 @@ const AdminPanel = ({ goHome, leaderboard, setLeaderboard }) => {
             <div className="flex gap-4">
               <button
                 onClick={clearAllLeaderboards}
-                className="bg-red-600 hover:bg-red-700 text-white px-10 py-6 rounded-2xl text-4xl font-bold transition-colors flex items-center gap-4"
+                disabled={isClearing}
+                className="bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white px-10 py-6 rounded-2xl text-4xl font-bold transition-colors flex items-center gap-4"
               >
                 <AlertTriangle size={48} />
-                Confirm Clear All
+                {isClearing ? 'Clearing...' : 'Confirm Clear All'}
               </button>
               <button
                 onClick={() => setShowConfirm(null)}
+                disabled={isClearing}
                 className="bg-gray-500 hover:bg-gray-600 text-white px-10 py-6 rounded-2xl text-4xl font-bold transition-colors"
               >
                 Cancel
@@ -189,7 +202,7 @@ const AdminPanel = ({ goHome, leaderboard, setLeaderboard }) => {
 
         <div className="mt-10 bg-blue-50 rounded-2xl p-6 border-2 border-blue-300">
           <p className="text-blue-900 text-center text-2xl">
-            💡 <strong>Tip:</strong> Clearing leaderboards will permanently delete all scores. Make sure this is what you want!
+            💡 <strong>Tip:</strong> Clearing leaderboards will permanently delete all scores from Firebase. Make sure this is what you want!
           </p>
         </div>
       </div>

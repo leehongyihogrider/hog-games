@@ -13,7 +13,18 @@ import Statistics from './components/Statistics';
 import Achievements from './components/Achievements';
 import AdminPanel from './components/AdminPanel';
 import soundPlayer from './utils/sounds';
-import { subscribeToLeaderboard, addScore } from './firebase';
+import {
+  subscribeToLeaderboard,
+  addScore,
+  updatePlayerStats,
+  subscribeToPlayerStats,
+  getDailyChallenges,
+  saveDailyChallenges,
+  updateChallengeCompletion,
+  incrementChallengesCompleted,
+  deleteLeaderboardEntry,
+  clearGameLeaderboard
+} from './firebase';
 import './App.css';
 
 // Translations
@@ -467,6 +478,7 @@ function App() {
   const [showNameEntry, setShowNameEntry] = useState(false);
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
+  const [playerStats, setPlayerStats] = useState(null);
 
   // Generate daily challenges
   const generateDailyChallenges = () => {
@@ -523,21 +535,40 @@ function App() {
     return shuffled.slice(0, 3);
   };
 
-  // Load daily challenges
-  React.useEffect(() => {
-    if (!isGuestMode && playerName && playerName !== 'Guest') {
-      const today = new Date().toDateString();
-      const savedChallenges = localStorage.getItem(`dailyChallenges_${today}`);
+  // Load daily challenges from Firebase
+  useEffect(() => {
+    const loadChallenges = async () => {
+      if (!isGuestMode && playerName && playerName !== 'Guest') {
+        try {
+          const savedChallenges = await getDailyChallenges(playerName);
 
-      if (savedChallenges) {
-        setDailyChallenges(JSON.parse(savedChallenges));
-      } else {
-        const challenges = generateDailyChallenges();
-        setDailyChallenges(challenges);
-        localStorage.setItem(`dailyChallenges_${today}`, JSON.stringify(challenges));
+          if (savedChallenges) {
+            setDailyChallenges(savedChallenges);
+          } else {
+            const challenges = generateDailyChallenges();
+            setDailyChallenges(challenges);
+            await saveDailyChallenges(playerName, challenges);
+          }
+        } catch (error) {
+          console.error('Failed to load daily challenges:', error);
+        }
       }
+    };
+
+    loadChallenges();
+  }, [isGuestMode, playerName]);
+
+  // Subscribe to player stats from Firebase
+  useEffect(() => {
+    if (!isGuestMode && playerName && playerName !== 'Guest') {
+      const unsubscribe = subscribeToPlayerStats(playerName, (stats) => {
+        setPlayerStats(stats);
+      });
+      return () => unsubscribe();
+    } else {
+      setPlayerStats(null);
     }
-  }, [isGuestMode, playerName, language]);
+  }, [isGuestMode, playerName]);
 
   // Leaderboard state - now synced with Firebase
   const [leaderboard, setLeaderboard] = useState({
@@ -639,8 +670,8 @@ function App() {
   };
 
   const getAchievementStats = () => {
-    // Return empty stats for guest mode
-    if (isGuestMode || playerName === 'Guest' || !playerName) {
+    // Return empty stats for guest mode or no stats loaded
+    if (isGuestMode || playerName === 'Guest' || !playerName || !playerStats) {
       return {
         gamesPlayed: 0,
         threeStarGames: 0,
@@ -653,28 +684,9 @@ function App() {
         allDifficultiesTried: false
       };
     }
-
-    const statsKey = `hogGamesStats_${playerName}`;
-    const savedStats = localStorage.getItem(statsKey);
-
-    if (!savedStats) {
-      return {
-        gamesPlayed: 0,
-        threeStarGames: 0,
-        currentStreak: 0,
-        gamesTriedCount: 0,
-        challengesCompleted: 0,
-        easyMastered: false,
-        mediumMastered: false,
-        hardMastered: false,
-        allDifficultiesTried: false
-      };
-    }
-
-    const stats = JSON.parse(savedStats);
 
     // Count games tried (games with at least 1 play)
-    const gamesTriedCount = Object.values(stats.gamesBreakdown || {}).filter(count => count > 0).length;
+    const gamesTriedCount = Object.values(playerStats.gamesBreakdown || {}).filter(count => count > 0).length;
 
     // Count 3-star games from leaderboard
     let threeStarGames = 0;
@@ -686,26 +698,6 @@ function App() {
         threeStarGames++;
       }
     });
-
-    // Calculate streak
-    const today = new Date().toDateString();
-    const lastPlayDate = stats.lastPlayDate || '';
-    let currentStreak = stats.currentStreak || 0;
-
-    if (lastPlayDate === today) {
-      // Already played today, keep current streak
-      currentStreak = stats.currentStreak || 1;
-    } else {
-      const yesterday = new Date();
-      yesterday.setDate(yesterday.getDate() - 1);
-      if (lastPlayDate === yesterday.toDateString()) {
-        // Played yesterday, increment streak
-        currentStreak = (stats.currentStreak || 0) + 1;
-      } else if (lastPlayDate) {
-        // Streak broken
-        currentStreak = 1;
-      }
-    }
 
     // Check difficulty mastery from leaderboard
     const games = ['memory', 'whack', 'sequence', 'math', 'wordsearch', 'numbersorting'];
@@ -737,15 +729,12 @@ function App() {
       });
     });
 
-    // Get challenges completed
-    const challengesCompleted = stats.challengesCompleted || 0;
-
     return {
-      gamesPlayed: stats.totalGamesPlayed || 0,
+      gamesPlayed: playerStats.totalGamesPlayed || 0,
       threeStarGames,
-      currentStreak,
+      currentStreak: playerStats.currentStreak || 0,
       gamesTriedCount,
-      challengesCompleted,
+      challengesCompleted: playerStats.challengesCompleted || 0,
       easyMastered,
       mediumMastered,
       hardMastered,
@@ -753,149 +742,118 @@ function App() {
     };
   };
 
-  const trackGameStats = (game, score, difficulty) => {
+  const trackGameStats = async (game, score, difficulty) => {
     // Skip saving for guest mode
     if (isGuestMode || playerName === 'Guest') return;
 
-    const statsKey = `hogGamesStats_${playerName}`;
-    const savedStats = localStorage.getItem(statsKey);
-
-    let stats = savedStats ? JSON.parse(savedStats) : {
-      totalGamesPlayed: 0,
-      totalPlayTime: 0,
-      favoriteGame: 'None',
-      gamesBreakdown: { memory: 0, whack: 0, sequence: 0, math: 0, wordsearch: 0, numbersorting: 0 },
-      personalBests: {
-        memory: { score: 0, difficulty: 'easy', date: '-' },
-        whack: { score: 0, difficulty: 'easy', date: '-' },
-        sequence: { score: 0, difficulty: 'easy', date: '-' },
-        math: { score: 0, difficulty: 'easy', date: '-' },
-        wordsearch: { score: 0, difficulty: 'easy', date: '-' },
-        numbersorting: { score: 0, difficulty: 'easy', date: '-' }
-      },
-      recentActivity: [],
-      lastPlayDate: '',
-      currentStreak: 0,
-      challengesCompleted: 0
-    };
-
-    // Update stats
-    stats.totalGamesPlayed += 1;
-    stats.gamesBreakdown[game] += 1;
-
-    // Estimate play time (1 minute per game for memory, 0.5 for whack/math, 2 for sequence, 3 for wordsearch, 2 for numbersorting)
-    const playTimes = { memory: 1, whack: 0.5, sequence: 2, math: 1, wordsearch: 3, numbersorting: 2 };
-    stats.totalPlayTime += playTimes[game] || 1;
-
-    // Update personal best if score is higher
-    if (score > stats.personalBests[game].score) {
-      stats.personalBests[game] = {
-        score,
-        difficulty,
-        date: new Date().toLocaleDateString()
-      };
+    try {
+      await updatePlayerStats(playerName, game, score, difficulty);
+    } catch (error) {
+      console.error('Failed to update player stats:', error);
     }
-
-    // Add to recent activity
-    stats.recentActivity.unshift({
-      game,
-      score,
-      difficulty,
-      date: new Date().toLocaleDateString()
-    });
-    stats.recentActivity = stats.recentActivity.slice(0, 10); // Keep last 10
-
-    // Update streak tracking
-    const today = new Date().toDateString();
-    const lastPlayDate = stats.lastPlayDate || '';
-
-    if (lastPlayDate !== today) {
-      // First play of the day
-      if (lastPlayDate) {
-        const yesterday = new Date();
-        yesterday.setDate(yesterday.getDate() - 1);
-        if (lastPlayDate === yesterday.toDateString()) {
-          // Played yesterday, increment streak
-          stats.currentStreak = (stats.currentStreak || 0) + 1;
-        } else {
-          // Streak broken, reset to 1
-          stats.currentStreak = 1;
-        }
-      } else {
-        // First time playing
-        stats.currentStreak = 1;
-      }
-      stats.lastPlayDate = today;
-    }
-
-    localStorage.setItem(statsKey, JSON.stringify(stats));
   };
 
-  const checkChallengeCompletion = (game, score, difficulty, time = null) => {
+  const checkChallengeCompletion = async (game, score, difficulty, time = null) => {
     // Skip for guest mode
     if (isGuestMode || playerName === 'Guest') return;
 
-    const today = new Date().toDateString();
-    const savedChallenges = localStorage.getItem(`dailyChallenges_${today}`);
-
-    if (!savedChallenges) return;
-
-    let challenges = JSON.parse(savedChallenges);
-    let challengeCompleted = false;
-
-    challenges = challenges.map(challenge => {
+    // Check each daily challenge
+    for (const challenge of dailyChallenges) {
       // Skip if already completed
-      if (challenge.completed) return challenge;
+      if (challenge.completed) continue;
 
       // Check if this game matches the challenge
-      if (challenge.game !== game || challenge.difficulty !== difficulty) {
-        return challenge;
-      }
+      if (challenge.game !== game && challenge.game !== 'any') continue;
+      if (challenge.difficulty !== difficulty && challenge.difficulty !== 'any') continue;
 
       // Check completion criteria based on challenge type
       let isCompleted = false;
 
       switch (challenge.id) {
         case 'memory_easy_3star':
+        case 'memory_medium_3star':
         case 'numbersorting_easy_3star':
+        case 'numbersorting_medium_3star':
+        case 'sequence_easy_3star':
+        case 'sequence_medium_3star':
+        case 'math_easy_3star':
+        case 'math_medium_3star':
+        case 'wordsearch_medium_3star':
+        case 'whack_easy_3star':
+        case 'perfect_score':
           isCompleted = score >= 3;
+          break;
+        case 'whack_easy_15':
+          isCompleted = score >= 15;
           break;
         case 'whack_medium_25':
           isCompleted = score >= 25;
           break;
+        case 'whack_hard_30':
+          isCompleted = score >= 30;
+          break;
+        case 'whack_crazy_40':
+          isCompleted = score >= 40;
+          break;
+        case 'math_easy_10':
+          isCompleted = score >= 10;
+          break;
         case 'math_medium_15':
           isCompleted = score >= 15;
           break;
-        case 'sequence_hard_complete':
+        case 'math_hard_20':
+          isCompleted = score >= 20;
+          break;
+        case 'sequence_easy_round5':
+        case 'sequence_medium_round5':
           isCompleted = score >= 5;
           break;
+        case 'sequence_hard_round3':
+          isCompleted = score >= 3;
+          break;
+        case 'wordsearch_easy_3min':
+          isCompleted = time !== null && time <= 180;
+          break;
         case 'wordsearch_easy_2min':
-          // time is in seconds, 2 minutes = 120 seconds
           isCompleted = time !== null && time <= 120;
+          break;
+        case 'wordsearch_medium_5min':
+          isCompleted = time !== null && time <= 300;
+          break;
+        case 'numbersorting_medium_2min':
+          isCompleted = time !== null && time <= 120;
+          break;
+        case 'memory_hard_complete':
+        case 'wordsearch_hard_complete':
+        case 'numbersorting_hard_complete':
+          isCompleted = true; // Just completing hard mode counts
+          break;
+        case 'memory_easy_10moves':
+          isCompleted = score <= 10;
+          break;
+        case 'memory_medium_20moves':
+          isCompleted = score <= 20;
+          break;
+        case 'numbersorting_easy_nomistakes':
+          isCompleted = score === 0; // 0 mistakes
           break;
         default:
           break;
       }
 
-      if (isCompleted && !challenge.completed) {
-        challengeCompleted = true;
-        return { ...challenge, completed: true };
-      }
-
-      return challenge;
-    });
-
-    // Save updated challenges
-    localStorage.setItem(`dailyChallenges_${today}`, JSON.stringify(challenges));
-
-    // If a new challenge was completed, increment the counter
-    if (challengeCompleted) {
-      const statsKey = `hogGamesStats_${playerName}`;
-      const savedStats = localStorage.getItem(statsKey);
-      if (savedStats) {
-        const stats = JSON.parse(savedStats);
-        stats.challengesCompleted = (stats.challengesCompleted || 0) + 1;
-        localStorage.setItem(statsKey, JSON.stringify(stats));
+      if (isCompleted) {
+        try {
+          const updated = await updateChallengeCompletion(playerName, challenge.id);
+          if (updated) {
+            await incrementChallengesCompleted(playerName);
+            // Update local state
+            setDailyChallenges(prev =>
+              prev.map(c => c.id === challenge.id ? { ...c, completed: true } : c)
+            );
+          }
+        } catch (error) {
+          console.error('Failed to update challenge completion:', error);
+        }
       }
     }
   };
@@ -1387,6 +1345,7 @@ function App() {
           translations={translations}
           playerName={playerName}
           isGuestMode={isGuestMode}
+          playerStats={playerStats}
         />
       )}
 
@@ -1404,7 +1363,6 @@ function App() {
         <AdminPanel
           goHome={() => setCurrentGame(null)}
           leaderboard={leaderboard}
-          setLeaderboard={setLeaderboard}
         />
       )}
     </div>
