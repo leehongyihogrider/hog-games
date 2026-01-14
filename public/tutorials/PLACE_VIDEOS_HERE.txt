@@ -1,0 +1,26 @@
+Place your tutorial videos in this folder with the following names:
+
+- memory-game.mp4
+- whack-a-mole.mp4
+- colour-sequence.mp4
+- math-game.mp4
+- word-search.mp4
+- number-sorting.mp4
+- castle-defense.mp4
+- tic-tac-toe.mp4
+- connect4.mp4
+- rhythm-game.mp4
+
+Video Requirements:
+- Format: MP4 (H.264 codec recommended for browser compatibility)
+- Duration: 30-60 seconds maximum
+- Resolution: 1280x720 or 1920x1080
+- File size: Keep under 10MB per video for fast loading
+- Audio: Optional (can add voiceover or keep silent)
+
+Tips for recording:
+1. Screen record one complete game round
+2. Show clear examples of gameplay
+3. Use large, readable text overlays
+4. Highlight where to click/tap
+5. Keep it simple and short

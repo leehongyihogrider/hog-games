@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run build:*)",
+      "Bash(for file in ColourSequence MathGame WordSearch NumberSorting)",
+      "Bash(do echo \"Checking $file...\" grep -n \"viewLeaderboard.*Trophy\\|Trophy.*viewLeaderboard\" \"src/components/$file.jsx\")",
+      "Bash(for game in MathGame WordSearch NumberSorting)",
+      "Bash(do echo \"=== $game ===\" grep -n \"bg-yellow-50.*border-yellow-500\" \"src/components/$game.jsx\")",
+      "Bash(do echo \"Checking $file...\")",
+      "Bash(done)",
+      "Bash(for file in src/components/{MemoryGame,MathGame,Sudoku,NumberSorting,WordSearch}.jsx)",
+      "Bash(do echo \"=== $file ===\")"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}

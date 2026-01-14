@@ -1,0 +1,158 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+/* Confetti animations */
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) translateX(0) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(120vh) translateX(100px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.confetti {
+  position: fixed;
+  width: 20px;
+  height: 20px;
+  z-index: 99999;
+  pointer-events: none;
+  top: -50px;
+  border-radius: 3px;
+  will-change: transform;
+}
+
+.confetti-left {
+  animation: confetti-fall 3.5s linear forwards;
+}
+
+/* Button pulsing and glowing animation */
+@keyframes pulse-glow {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 30px rgba(37, 99, 235, 0.6), 0 0 15px rgba(37, 99, 235, 0.4);
+  }
+  50% {
+    transform: scale(1.08);
+    box-shadow: 0 0 50px rgba(37, 99, 235, 1), 0 0 80px rgba(37, 99, 235, 0.6), 0 0 100px rgba(37, 99, 235, 0.3);
+  }
+}
+
+.pulse-glow {
+  animation: pulse-glow 1.2s ease-in-out infinite;
+}
+
+/* Victory box entrance animation */
+@keyframes victory-entrance {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.victory-entrance {
+  animation: victory-entrance 0.6s ease-out forwards;
+}
+
+/* Trophy bounce animation */
+@keyframes trophy-bounce {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-15px);
+  }
+}
+
+.trophy-bounce {
+  animation: trophy-bounce 0.8s ease-in-out infinite;
+}
+
+/* Guest mode animation - combines glow with rotation like trophy */
+@keyframes guest-sway {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    box-shadow: 0 0 30px rgba(107, 114, 128, 0.6), 0 0 15px rgba(107, 114, 128, 0.4);
+  }
+  25% {
+    transform: scale(1.04) rotate(-2deg);
+    box-shadow: 0 0 40px rgba(107, 114, 128, 0.8), 0 0 50px rgba(107, 114, 128, 0.5), 0 0 60px rgba(107, 114, 128, 0.3);
+  }
+  50% {
+    transform: scale(1.08) rotate(0deg);
+    box-shadow: 0 0 50px rgba(107, 114, 128, 1), 0 0 80px rgba(107, 114, 128, 0.6), 0 0 100px rgba(107, 114, 128, 0.3);
+  }
+  75% {
+    transform: scale(1.04) rotate(2deg);
+    box-shadow: 0 0 40px rgba(107, 114, 128, 0.8), 0 0 50px rgba(107, 114, 128, 0.5), 0 0 60px rgba(107, 114, 128, 0.3);
+  }
+}
+
+.guest-sway {
+  animation: guest-sway 1.8s ease-in-out infinite;
+}
+
+/* Star sparkle animation */
+@keyframes star-sparkle {
+  0%, 100% {
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.2) rotate(180deg);
+    filter: brightness(1.5);
+  }
+}
+
+.star-sparkle {
+  animation: star-sparkle 1s ease-in-out infinite;
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}

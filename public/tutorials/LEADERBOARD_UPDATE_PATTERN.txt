@@ -1,0 +1,46 @@
+# Leaderboard Styling Update Pattern
+
+## MemoryGame - ✅ UPDATED (Use as reference)
+
+All games need the same polished leaderboard styling.
+
+## Changes Made:
+
+### 1. Main Leaderboard Container
+**OLD:** bg-yellow-50 border-2 border-yellow-500
+**NEW:** bg-gradient-to-br from-blue-50 to-indigo-50 border-2 border-blue-300 rounded-2xl p-6 shadow-lg
+
+### 2. Header
+**OLD:** text-xl font-bold text-yellow-800
+**NEW:** text-4xl font-bold text-gray-800 mb-6 text-center flex items-center justify-center gap-3
+Add: <Trophy className="text-amber-500" size={48} />
+
+### 3. Entry Cards
+**OLD:** bg-white p-3 rounded
+**NEW:** bg-white p-5 rounded-xl shadow-md border-2 border-gray-100 hover:border-blue-300 transition-all
+
+### 4. Rank Numbers (Top 3 colored)
+1st place: text-amber-500 (gold)
+2nd place: text-gray-400 (silver)
+3rd place: text-orange-600 (bronze)
+Others: text-gray-600
+
+### 5. Score Colors
+Moves/Score: text-emerald-600 (green)
+Time: text-blue-600 (blue)
+
+### 6. No Scores Message
+**NEW:** 
+- Gray gradient background
+- Large trophy icon
+- "No scores yet!" + "Be the first to play!"
+
+## Games to Update:
+- WhackAMole
+- ColourSequence
+- MathGame
+- WordSearch
+- NumberSorting
+- CastleDefense
+
+Copy the pattern from MemoryGame.jsx lines 211-245
