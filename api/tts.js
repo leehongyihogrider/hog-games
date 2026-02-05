@@ -38,7 +38,7 @@ export default async function handler(req, res) {
   }
 
   // Select voice based on language
-  // en-SG (Singapore English) for English, cmn-CN for Chinese
+  // Using en-US Neural2 for English (en-SG Neural2 not available), cmn-CN for Chinese
   const voiceConfig = language === 'zh'
     ? {
         languageCode: 'cmn-CN',
@@ -46,8 +46,8 @@ export default async function handler(req, res) {
         ssmlGender: 'FEMALE'
       }
     : {
-        languageCode: 'en-SG',
-        name: 'en-SG-Neural2-C', // Singapore English female voice - more natural
+        languageCode: 'en-US',
+        name: 'en-US-Neural2-F', // US English female voice - natural sounding
         ssmlGender: 'FEMALE'
       };
 
