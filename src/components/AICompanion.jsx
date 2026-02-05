@@ -186,8 +186,8 @@ const AICompanion = ({
     }
   }, [isOpen, getGreeting, ttsEnabled, messages.length]);
 
-  // If minimized mode, just show floating bubble
-  if (minimized) {
+  // If minimized mode and chat is NOT open, just show floating bubble
+  if (minimized && !isOpen) {
     return (
       <>
         {/* Floating speech bubble */}
@@ -219,7 +219,7 @@ const AICompanion = ({
     );
   }
 
-  // Full chat interface
+  // Full chat interface - show button only if not open
   if (!showChat && !isOpen) {
     return (
       <button
