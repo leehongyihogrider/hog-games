@@ -524,6 +524,14 @@ function App() {
   const [isGuestMode, setIsGuestMode] = useState(false);
   const [dailyChallenges, setDailyChallenges] = useState([]);
   const [playerStats, setPlayerStats] = useState(null);
+  const [aiTrigger, setAiTrigger] = useState(null);
+
+  // Function to trigger AI companion with a prompt
+  const triggerAI = (prompt) => {
+    setAiTrigger(prompt);
+    // Clear trigger after a short delay so it can be triggered again
+    setTimeout(() => setAiTrigger(null), 100);
+  };
 
   // Generate daily challenges
   const generateDailyChallenges = () => {
@@ -1350,6 +1358,7 @@ function App() {
           addToLeaderboard={addToLeaderboard}
           leaderboard={leaderboard.memory}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1489,6 +1498,7 @@ function App() {
           currentGame={currentGame}
           language={language}
           minimized={true}
+          onTrigger={aiTrigger}
         />
       )}
     </div>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Sparkles, RotateCcw, Trophy, Star, Home, Award, PlayCircle, X } from 'lucide-react';
 import soundPlayer from '../utils/sounds';
 
-const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName }) => {
+const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName, onAITrigger }) => {
   const t = translations[language];
 
   // Safety hazard cards with image paths and reminders
@@ -31,6 +31,7 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
   const [confetti, setConfetti] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
   const [currentReminder, setCurrentReminder] = useState(null);
+  const [matchCount, setMatchCount] = useState(0);
 
   const difficulties = {
     easy: { pairs: 3, name: t.easy, gridCols: 3 },
@@ -100,6 +101,7 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
     setIsWon(false);
     setDifficulty(level);
     setShowLeaderboard(false);
+    setMatchCount(0);
   };
 
   const handleCardClick = (index) => {
@@ -127,10 +129,17 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
         // Play match sound
         setTimeout(() => soundPlayer.playMatch(), 300);
 
+        const newMatchCount = matchCount + 1;
+        setMatchCount(newMatchCount);
         setMatched([...matched, first, second]);
         setFlipped([]);
         // Set the current reminder to display
         setCurrentReminder(cards[first].reminderKey);
+
+        // AI trigger: every 3rd match (to stay within rate limits)
+        if (onAITrigger && newMatchCount % 3 === 0) {
+          onAITrigger(`Player just matched ${newMatchCount} pairs! Encourage them.`);
+        }
 
         if (matched.length + 2 === cards.length) {
           setIsWon(true);
@@ -142,6 +151,13 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
           // Auto-save with moves and time (leaderboard will sort by moves first, then time)
           // Store as score for compatibility, but use moves as primary metric
           addToLeaderboard('memory', playerName, newMoves, difficulty, timeElapsed);
+
+          // AI trigger: ALWAYS on completion
+          if (onAITrigger) {
+            setTimeout(() => {
+              onAITrigger(`Player just completed the memory game in ${newMoves} moves! Celebrate with them!`);
+            }, 1000);
+          }
         }
       } else {
         // Play error sound for mismatch
