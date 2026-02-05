@@ -29,11 +29,18 @@ export default async function handler(req, res) {
 
   const { messages, context } = body || {};
 
+  // Debug logging
+  console.log('=== /api/chat request ===');
+  console.log('Body:', JSON.stringify(body, null, 2));
+  console.log('Messages:', JSON.stringify(messages, null, 2));
+  console.log('Context:', JSON.stringify(context, null, 2));
+
   // If no messages, create a default based on context/trigger
   let finalMessages = messages;
   if (!finalMessages || !Array.isArray(finalMessages) || finalMessages.length === 0) {
     // Use context as the trigger message
     finalMessages = [{ role: 'user', content: context?.trigger || 'Say something encouraging!' }];
+    console.log('Using fallback finalMessages:', JSON.stringify(finalMessages, null, 2));
   }
 
   // System prompt for the AI companion

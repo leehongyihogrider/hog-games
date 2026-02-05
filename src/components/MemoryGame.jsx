@@ -142,13 +142,16 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
         // Set the current reminder to display
         setCurrentReminder(cards[first].reminderKey);
 
+        const isGameComplete = matched.length + 2 === cards.length;
+
         // AI trigger: random interval (2-4 actions) for success
-        if (onAITrigger && newActionCount >= nextTriggerAt) {
+        // But SKIP if this is the final match (completion trigger will handle it)
+        if (onAITrigger && newActionCount >= nextTriggerAt && !isGameComplete) {
           onAITrigger(`Player just found a matching pair! Say something encouraging like "Nice match!" or "Wah, sharp eyes lah!"`);
           setNextTriggerAt(newActionCount + getNextTriggerInterval());
         }
 
-        if (matched.length + 2 === cards.length) {
+        if (isGameComplete) {
           setIsWon(true);
           // Play dramatic victory sound and confetti
           setTimeout(() => {
@@ -159,7 +162,7 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
           // Store as score for compatibility, but use moves as primary metric
           addToLeaderboard('memory', playerName, newMoves, difficulty, timeElapsed);
 
-          // AI trigger: ALWAYS on completion
+          // AI trigger: ALWAYS on completion (with delay to let sounds play first)
           if (onAITrigger) {
             setTimeout(() => {
               onAITrigger(`Player just completed the memory game in ${newMoves} moves! Celebrate big time - "Wah shiok! You did it!"`);

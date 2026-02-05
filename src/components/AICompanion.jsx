@@ -28,39 +28,46 @@ const AICompanion = ({
     ttsPlayer.setLanguage(language);
   }, [language]);
 
-  // Handle external triggers (from games)
+  // Handle external triggers (from games) with debounce
   useEffect(() => {
-    if (onTrigger) {
+    if (onTrigger && !isLoading) {
+      console.log('AICompanion: Received trigger:', onTrigger);
       handleAIResponse(onTrigger);
     }
   }, [onTrigger]);
 
   // Call the AI API
   const callAI = async (userMessage, context = {}) => {
+    const requestBody = {
+      messages: [
+        ...messages.slice(-6).map(m => ({
+          role: m.role,
+          content: m.content
+        })),
+        { role: 'user', content: userMessage }
+      ],
+      context: {
+        game: currentGame,
+        playerName,
+        state: gameState,
+        score,
+        language,
+        trigger: userMessage, // Include trigger in context as fallback
+        ...context
+      }
+    };
+
+    console.log('AICompanion: Calling API with:', JSON.stringify(requestBody, null, 2));
+
     try {
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [
-            ...messages.slice(-6).map(m => ({
-              role: m.role,
-              content: m.content
-            })),
-            { role: 'user', content: userMessage }
-          ],
-          context: {
-            game: currentGame,
-            playerName,
-            state: gameState,
-            score,
-            language,
-            ...context
-          }
-        })
+        body: JSON.stringify(requestBody)
       });
 
       const data = await response.json();
+      console.log('AICompanion: API response:', data);
       return data.message || data.fallback || "Steady lah!";
     } catch (error) {
       console.error('AI API error:', error);
