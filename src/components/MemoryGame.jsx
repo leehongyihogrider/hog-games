@@ -31,7 +31,11 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
   const [confetti, setConfetti] = useState([]);
   const [showTutorial, setShowTutorial] = useState(false);
   const [currentReminder, setCurrentReminder] = useState(null);
-  const [matchCount, setMatchCount] = useState(0);
+  const [actionCount, setActionCount] = useState(0);
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 3) + 2); // Random 2-4
+
+  // Get random next trigger interval (2-4 actions)
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 3) + 2;
 
   const difficulties = {
     easy: { pairs: 3, name: t.easy, gridCols: 3 },
@@ -101,7 +105,8 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
     setIsWon(false);
     setDifficulty(level);
     setShowLeaderboard(false);
-    setMatchCount(0);
+    setActionCount(0);
+    setNextTriggerAt(getNextTriggerInterval());
   };
 
   const handleCardClick = (index) => {
@@ -125,20 +130,22 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
       setMoves(newMoves);
       const [first, second] = newFlipped;
 
+      const newActionCount = actionCount + 1;
+      setActionCount(newActionCount);
+
       if (cards[first].cardId === cards[second].cardId) {
         // Play match sound
         setTimeout(() => soundPlayer.playMatch(), 300);
 
-        const newMatchCount = matchCount + 1;
-        setMatchCount(newMatchCount);
         setMatched([...matched, first, second]);
         setFlipped([]);
         // Set the current reminder to display
         setCurrentReminder(cards[first].reminderKey);
 
-        // AI trigger: every 3rd match (to stay within rate limits)
-        if (onAITrigger && newMatchCount % 3 === 0) {
-          onAITrigger(`Player just matched ${newMatchCount} pairs! Encourage them.`);
+        // AI trigger: random interval (2-4 actions) for success
+        if (onAITrigger && newActionCount >= nextTriggerAt) {
+          onAITrigger(`Player just found a matching pair! Say something encouraging like "Nice match!" or "Wah, sharp eyes lah!"`);
+          setNextTriggerAt(newActionCount + getNextTriggerInterval());
         }
 
         if (matched.length + 2 === cards.length) {
@@ -155,7 +162,7 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
           // AI trigger: ALWAYS on completion
           if (onAITrigger) {
             setTimeout(() => {
-              onAITrigger(`Player just completed the memory game in ${newMoves} moves! Celebrate with them!`);
+              onAITrigger(`Player just completed the memory game in ${newMoves} moves! Celebrate big time - "Wah shiok! You did it!"`);
             }, 1000);
           }
         }
@@ -163,6 +170,12 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
         // Play error sound for mismatch
         setTimeout(() => soundPlayer.playError(), 600);
         setTimeout(() => setFlipped([]), 1000);
+
+        // AI trigger: random interval (2-4 actions) for mismatch comfort
+        if (onAITrigger && newActionCount >= nextTriggerAt) {
+          onAITrigger(`Player just got a mismatch. Comfort them gently - "No rush lah" or "Aiyah, try again!"`);
+          setNextTriggerAt(newActionCount + getNextTriggerInterval());
+        }
       }
     }
   };
