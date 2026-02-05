@@ -1,1 +1,7 @@
 @import "tailwindcss";
+
+/* Global background color */
+html, body, #root {
+  background-color: #f3f4f6; /* gray-100 */
+  min-height: 100vh;
+}

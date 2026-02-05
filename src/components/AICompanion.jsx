@@ -36,7 +36,7 @@ const AICompanion = ({
     }
   }, [onTrigger]);
 
-  // Call the AI API
+  // Call the AI API with timeout
   const callAI = async (userMessage, context = {}) => {
     const requestBody = {
       messages: [
@@ -60,11 +60,18 @@ const AICompanion = ({
     console.log('AICompanion: Calling API with:', JSON.stringify(requestBody, null, 2));
 
     try {
+      // Add 15 second timeout to prevent hanging
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 15000);
+
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(requestBody)
+        body: JSON.stringify(requestBody),
+        signal: controller.signal
       });
+
+      clearTimeout(timeoutId);
 
       const data = await response.json();
       console.log('AICompanion: API response:', data);
@@ -197,8 +204,25 @@ const AICompanion = ({
   if (minimized && !isOpen) {
     return (
       <>
+        {/* Loading/thinking bubble */}
+        {isLoading && (
+          <div className="fixed bottom-32 right-6 z-50 max-w-sm animate-bounce-in">
+            <div className="bg-white rounded-3xl shadow-2xl p-6 border-4 border-purple-300">
+              <div className="flex items-center gap-3">
+                <div className="flex gap-2">
+                  <span className="w-4 h-4 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                  <span className="w-4 h-4 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                  <span className="w-4 h-4 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                </div>
+                <span className="text-xl text-gray-500">Thinking...</span>
+              </div>
+            </div>
+            <div className="absolute -bottom-3 right-12 w-6 h-6 bg-white border-r-4 border-b-4 border-purple-300 transform rotate-45" />
+          </div>
+        )}
+
         {/* Floating speech bubble - BIGGER */}
-        {showBubble && lastMessage && (
+        {!isLoading && showBubble && lastMessage && (
           <div className="fixed bottom-32 right-6 z-50 max-w-sm animate-bounce-in">
             <div className="bg-white rounded-3xl shadow-2xl p-6 border-4 border-purple-300">
               <p className="text-2xl text-gray-700 leading-relaxed">{lastMessage}</p>
