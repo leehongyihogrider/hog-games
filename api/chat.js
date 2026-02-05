@@ -43,6 +43,11 @@ export default async function handler(req, res) {
     console.log('Using fallback finalMessages:', JSON.stringify(finalMessages, null, 2));
   }
 
+  // SEA-LION requires: system -> user -> assistant -> user -> assistant...
+  // Fix message alternation: must start with user after system, then alternate
+  finalMessages = ensureProperAlternation(finalMessages);
+  console.log('After alternation fix:', JSON.stringify(finalMessages, null, 2));
+
   // System prompt for the AI companion
   const systemPrompt = `You are a warm, friendly AI companion for elderly Singaporeans playing brain training games.
 
@@ -115,6 +120,37 @@ IMPORTANT:
       fallback: getFallbackResponse(context)
     });
   }
+}
+
+// Ensure messages alternate properly for SEA-LION API
+// Must be: user -> assistant -> user -> assistant...
+function ensureProperAlternation(messages) {
+  if (!messages || messages.length === 0) {
+    return [{ role: 'user', content: 'Hello!' }];
+  }
+
+  const cleaned = [];
+  let expectedRole = 'user'; // Must start with user after system
+
+  for (const msg of messages) {
+    if (msg.role === expectedRole) {
+      cleaned.push(msg);
+      expectedRole = expectedRole === 'user' ? 'assistant' : 'user';
+    } else if (msg.role === 'user' && expectedRole === 'assistant') {
+      // Two user messages in a row - skip the assistant expectation
+      // Just keep the user message (common when chat history + new message)
+      cleaned.push(msg);
+      expectedRole = 'assistant';
+    }
+    // Skip assistant messages that come before first user message
+  }
+
+  // If we end up with no messages or first isn't user, add a default
+  if (cleaned.length === 0 || cleaned[0].role !== 'user') {
+    return [{ role: 'user', content: messages[messages.length - 1]?.content || 'Hello!' }];
+  }
+
+  return cleaned;
 }
 
 // Fallback responses if API fails
