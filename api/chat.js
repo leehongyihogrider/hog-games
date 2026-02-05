@@ -78,6 +78,10 @@ IMPORTANT:
 - Celebrate small wins enthusiastically`;
 
   try {
+    // Add 10 second timeout - SEA-LION can be slow, return fallback quickly
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
+
     const response = await fetch('https://api.sea-lion.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -93,15 +97,20 @@ IMPORTANT:
         ],
         max_completion_tokens: 100, // Keep responses short
         temperature: 0.7
-      })
+      }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error('SEA-LION API error:', errorText);
-      return res.status(response.status).json({
-        error: 'AI service error',
-        fallback: getFallbackResponse(context)
+      // Return fallback as message (not error) for better UX
+      return res.status(200).json({
+        message: getFallbackResponse(context),
+        success: true,
+        fallback: true
       });
     }
 
@@ -115,9 +124,11 @@ IMPORTANT:
 
   } catch (error) {
     console.error('Error calling SEA-LION:', error);
-    return res.status(500).json({
-      error: 'Failed to get AI response',
-      fallback: getFallbackResponse(context)
+    // Return fallback as message for better UX (don't show error to user)
+    return res.status(200).json({
+      message: getFallbackResponse(context),
+      success: true,
+      fallback: true
     });
   }
 }
