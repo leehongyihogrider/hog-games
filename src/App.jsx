@@ -533,6 +533,25 @@ function App() {
     setTimeout(() => setAiTrigger(null), 100);
   };
 
+  // Main menu greeting with random game suggestion
+  const [hasGreetedMenu, setHasGreetedMenu] = useState(false);
+  useEffect(() => {
+    if (gameMode === 'single' && !currentGame && !hasGreetedMenu && playerName) {
+      const gameNames = ['Memory Card', 'Whack-a-Mole', 'Color Sequence', 'Word Search', 'Number Sorting', 'Quiz'];
+      const randomGame = gameNames[Math.floor(Math.random() * gameNames.length)];
+
+      // Delay the greeting slightly so the component is mounted
+      setTimeout(() => {
+        triggerAI(`Greet ${playerName || 'the player'} warmly on the main menu. Ask what game they want to play today. Maybe suggest trying "${randomGame}" - make it sound fun and casual in Singlish!`);
+        setHasGreetedMenu(true);
+      }, 1500);
+    }
+    // Reset greeting flag when entering a game
+    if (currentGame) {
+      setHasGreetedMenu(false);
+    }
+  }, [currentGame, gameMode, playerName, hasGreetedMenu]);
+
   // Generate daily challenges
   const generateDailyChallenges = () => {
     const allChallenges = [
@@ -1491,11 +1510,11 @@ function App() {
         </button>
       )}
 
-      {/* AI Companion - appears during games */}
-      {gameMode === 'single' && currentGame && !['admin', 'statistics', 'achievements'].includes(currentGame) && (
+      {/* AI Companion - appears on main menu AND during games */}
+      {gameMode === 'single' && !['admin', 'statistics', 'achievements'].includes(currentGame) && (
         <AICompanion
           playerName={playerName}
-          currentGame={currentGame}
+          currentGame={currentGame || 'menu'}
           language={language}
           minimized={true}
           onTrigger={aiTrigger}

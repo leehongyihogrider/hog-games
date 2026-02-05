@@ -197,30 +197,30 @@ const AICompanion = ({
   if (minimized && !isOpen) {
     return (
       <>
-        {/* Floating speech bubble */}
+        {/* Floating speech bubble - BIGGER */}
         {showBubble && lastMessage && (
-          <div className="fixed bottom-24 right-6 z-50 max-w-xs animate-bounce-in">
-            <div className="bg-white rounded-2xl shadow-lg p-4 border-2 border-purple-200">
-              <p className="text-lg text-gray-700">{lastMessage}</p>
+          <div className="fixed bottom-32 right-6 z-50 max-w-sm animate-bounce-in">
+            <div className="bg-white rounded-3xl shadow-2xl p-6 border-4 border-purple-300">
+              <p className="text-2xl text-gray-700 leading-relaxed">{lastMessage}</p>
               {ttsEnabled && (
                 <button
                   onClick={repeatLastMessage}
-                  className="mt-2 text-purple-500 hover:text-purple-700"
+                  className="mt-3 text-purple-500 hover:text-purple-700 p-2"
                 >
-                  <Volume2 className="w-5 h-5" />
+                  <Volume2 className="w-7 h-7" />
                 </button>
               )}
             </div>
-            <div className="absolute -bottom-2 right-8 w-4 h-4 bg-white border-r-2 border-b-2 border-purple-200 transform rotate-45" />
+            <div className="absolute -bottom-3 right-12 w-6 h-6 bg-white border-r-4 border-b-4 border-purple-300 transform rotate-45" />
           </div>
         )}
 
-        {/* Companion avatar button */}
+        {/* Companion avatar button - BIGGER */}
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+          className="fixed bottom-6 right-6 z-50 w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border-4 border-white"
         >
-          <span className="text-3xl">🤖</span>
+          <span className="text-5xl">🤖</span>
         </button>
       </>
     );
@@ -231,89 +231,89 @@ const AICompanion = ({
     return (
       <button
         onClick={() => setIsOpen(true)}
-        className="fixed bottom-6 right-6 z-50 w-16 h-16 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-lg flex items-center justify-center hover:scale-110 transition-transform"
+        className="fixed bottom-6 right-6 z-50 w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border-4 border-white"
       >
-        <MessageCircle className="w-8 h-8 text-white" />
+        <MessageCircle className="w-12 h-12 text-white" />
       </button>
     );
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-80 sm:w-96 bg-white rounded-3xl shadow-2xl border-2 border-purple-200 overflow-hidden">
-      {/* Header */}
-      <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <span className="text-3xl">🤖</span>
+    <div className="fixed bottom-6 right-6 z-50 w-96 sm:w-[28rem] bg-white rounded-3xl shadow-2xl border-4 border-purple-300 overflow-hidden">
+      {/* Header - BIGGER */}
+      <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-5 flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <span className="text-5xl">🤖</span>
           <div>
-            <h3 className="text-white font-bold text-lg">AI Companion</h3>
-            <p className="text-purple-100 text-sm">
+            <h3 className="text-white font-bold text-2xl">AI Companion</h3>
+            <p className="text-purple-100 text-lg">
               {language === 'zh' ? '我在这里帮助你' : "I'm here to help!"}
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
           <button
             onClick={toggleTTS}
-            className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
           >
             {ttsEnabled ? (
-              <Volume2 className="w-5 h-5 text-white" />
+              <Volume2 className="w-7 h-7 text-white" />
             ) : (
-              <VolumeX className="w-5 h-5 text-white" />
+              <VolumeX className="w-7 h-7 text-white" />
             )}
           </button>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-2 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
+            className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
           >
-            <X className="w-5 h-5 text-white" />
+            <X className="w-7 h-7 text-white" />
           </button>
         </div>
       </div>
 
-      {/* Messages */}
-      <div className="h-64 overflow-y-auto p-4 space-y-3 bg-gray-50">
+      {/* Messages - BIGGER */}
+      <div className="h-80 overflow-y-auto p-5 space-y-4 bg-gray-50">
         {messages.map((msg, idx) => (
           <div
             key={idx}
             className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             <div
-              className={`max-w-[80%] p-3 rounded-2xl ${
+              className={`max-w-[85%] p-4 rounded-2xl ${
                 msg.role === 'user'
                   ? 'bg-purple-500 text-white rounded-br-none'
-                  : 'bg-white text-gray-700 rounded-bl-none shadow border border-gray-100'
+                  : 'bg-white text-gray-700 rounded-bl-none shadow-lg border-2 border-gray-100'
               }`}
             >
-              <p className="text-lg">{msg.content}</p>
+              <p className="text-xl leading-relaxed">{msg.content}</p>
             </div>
           </div>
         ))}
         {isLoading && (
           <div className="flex justify-start">
-            <div className="bg-white p-3 rounded-2xl rounded-bl-none shadow border border-gray-100">
-              <div className="flex gap-1">
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                <span className="w-2 h-2 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+            <div className="bg-white p-4 rounded-2xl rounded-bl-none shadow-lg border-2 border-gray-100">
+              <div className="flex gap-2">
+                <span className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                <span className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                <span className="w-3 h-3 bg-purple-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
               </div>
             </div>
           </div>
         )}
       </div>
 
-      {/* Input */}
-      <div className="p-4 border-t border-gray-200 bg-white">
-        <div className="flex gap-2">
+      {/* Input - BIGGER */}
+      <div className="p-5 border-t-2 border-gray-200 bg-white">
+        <div className="flex gap-3">
           <button
             onClick={toggleVoiceInput}
-            className={`p-3 rounded-xl transition-colors ${
+            className={`p-4 rounded-xl transition-colors ${
               isListening
                 ? 'bg-red-500 text-white animate-pulse'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {isListening ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
+            {isListening ? <MicOff className="w-8 h-8" /> : <Mic className="w-8 h-8" />}
           </button>
           <input
             type="text"
@@ -321,14 +321,14 @@ const AICompanion = ({
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             placeholder={language === 'zh' ? '输入信息...' : 'Type a message...'}
-            className="flex-1 p-3 text-lg border border-gray-200 rounded-xl focus:outline-none focus:border-purple-400"
+            className="flex-1 p-4 text-xl border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400"
           />
           <button
             onClick={sendMessage}
             disabled={!inputText.trim() || isLoading}
-            className="p-3 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="p-4 bg-purple-500 text-white rounded-xl hover:bg-purple-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            <Send className="w-6 h-6" />
+            <Send className="w-8 h-8" />
           </button>
         </div>
       </div>

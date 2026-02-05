@@ -156,6 +156,11 @@ function ensureProperAlternation(messages) {
 // Fallback responses if API fails
 function getFallbackResponse(context) {
   const fallbacks = {
+    'menu': [
+      "What game you want play today?",
+      "Wah, so many games to choose! Which one you like?",
+      "Come, let's exercise our brain! Pick any game lah!"
+    ],
     'memory': [
       "Take your time ah, no rush!",
       "Wah, you doing good! Keep going!",
