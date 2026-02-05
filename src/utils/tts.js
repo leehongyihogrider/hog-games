@@ -25,11 +25,18 @@ class TTSPlayer {
     if (!this.synth) return;
 
     const voices = this.synth.getVoices();
-    if (this.language === 'zh') {
+    if (this.language === 'yue') {
+      // Cantonese - look for yue or zh-HK voices
+      this.voice = voices.find(v =>
+        v.lang.includes('yue') || v.lang === 'zh-HK'
+      ) || voices.find(v => v.lang.includes('zh')) || null;
+    } else if (this.language === 'zh') {
+      // Mandarin
       this.voice = voices.find(v =>
         v.lang.includes('zh') || v.lang.includes('cmn')
       ) || null;
     } else {
+      // English - prefer Singapore English if available
       this.voice = voices.find(v =>
         v.lang === 'en-SG' || v.name.toLowerCase().includes('singapore')
       ) || voices.find(v => v.lang.startsWith('en')) || null;
@@ -119,7 +126,9 @@ class TTSPlayer {
         utterance.voice = this.voice;
       }
 
-      utterance.lang = this.language === 'zh' ? 'zh-CN' : 'en-US';
+      // Map language to browser TTS locale
+      const langMap = { 'zh': 'zh-CN', 'yue': 'zh-HK', 'en': 'en-US' };
+      utterance.lang = langMap[this.language] || 'en-US';
       utterance.rate = options.rate || this.rate;
       utterance.pitch = options.pitch || 1;
       utterance.volume = options.volume || 1;

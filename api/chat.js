@@ -1,4 +1,4 @@
-// Vercel Serverless Function for SEA-LION API
+// Vercel Serverless Function for Claude API (Anthropic)
 // This keeps your API key secure on the server
 
 export default async function handler(req, res) {
@@ -31,22 +31,28 @@ export default async function handler(req, res) {
 
   // Debug logging
   console.log('=== /api/chat request ===');
-  console.log('Body:', JSON.stringify(body, null, 2));
-  console.log('Messages:', JSON.stringify(messages, null, 2));
   console.log('Context:', JSON.stringify(context, null, 2));
 
-  // If no messages, create a default based on context/trigger
-  let finalMessages = messages;
-  if (!finalMessages || !Array.isArray(finalMessages) || finalMessages.length === 0) {
-    // Use context as the trigger message
-    finalMessages = [{ role: 'user', content: context?.trigger || 'Say something encouraging!' }];
-    console.log('Using fallback finalMessages:', JSON.stringify(finalMessages, null, 2));
+  // Check for API key
+  if (!process.env.ANTHROPIC_API_KEY) {
+    console.error('ANTHROPIC_API_KEY not configured');
+    return res.status(200).json({
+      message: getFallbackResponse(context),
+      success: true,
+      fallback: true
+    });
   }
 
-  // SEA-LION requires: system -> user -> assistant -> user -> assistant...
-  // Fix message alternation: must start with user after system, then alternate
-  finalMessages = ensureProperAlternation(finalMessages);
-  console.log('After alternation fix:', JSON.stringify(finalMessages, null, 2));
+  // Build messages for Claude - it handles alternation automatically
+  let finalMessages = messages;
+  if (!finalMessages || !Array.isArray(finalMessages) || finalMessages.length === 0) {
+    finalMessages = [{ role: 'user', content: context?.trigger || 'Say something encouraging!' }];
+  }
+
+  // Claude requires messages to start with 'user' role
+  if (finalMessages[0]?.role !== 'user') {
+    finalMessages = [{ role: 'user', content: context?.trigger || 'Hello!' }, ...finalMessages];
+  }
 
   // System prompt for the AI companion
   const systemPrompt = `You are a warm, friendly AI companion for elderly Singaporeans playing brain training games.
@@ -78,25 +84,22 @@ IMPORTANT:
 - Celebrate small wins enthusiastically`;
 
   try {
-    // Add 10 second timeout - SEA-LION can be slow, return fallback quickly
+    // Add 10 second timeout
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 10000);
 
-    const response = await fetch('https://api.sea-lion.ai/v1/chat/completions', {
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.SEALION_API_KEY}`,
-        'Content-Type': 'application/json',
-        'Accept': 'application/json'
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+        'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'aisingapore/Gemma-SEA-LION-v4-27B-IT',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          ...finalMessages
-        ],
-        max_completion_tokens: 100, // Keep responses short
-        temperature: 0.7
+        model: 'claude-3-5-haiku-20241022',
+        max_tokens: 150,
+        system: systemPrompt,
+        messages: finalMessages
       }),
       signal: controller.signal
     });
@@ -105,8 +108,7 @@ IMPORTANT:
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('SEA-LION API error:', errorText);
-      // Return fallback as message (not error) for better UX
+      console.error('Claude API error:', errorText);
       return res.status(200).json({
         message: getFallbackResponse(context),
         success: true,
@@ -115,7 +117,7 @@ IMPORTANT:
     }
 
     const data = await response.json();
-    const aiMessage = data.choices?.[0]?.message?.content || getFallbackResponse(context);
+    const aiMessage = data.content?.[0]?.text || getFallbackResponse(context);
 
     return res.status(200).json({
       message: aiMessage,
@@ -123,45 +125,13 @@ IMPORTANT:
     });
 
   } catch (error) {
-    console.error('Error calling SEA-LION:', error);
-    // Return fallback as message for better UX (don't show error to user)
+    console.error('Error calling Claude:', error);
     return res.status(200).json({
       message: getFallbackResponse(context),
       success: true,
       fallback: true
     });
   }
-}
-
-// Ensure messages alternate properly for SEA-LION API
-// Must be: user -> assistant -> user -> assistant...
-function ensureProperAlternation(messages) {
-  if (!messages || messages.length === 0) {
-    return [{ role: 'user', content: 'Hello!' }];
-  }
-
-  const cleaned = [];
-  let expectedRole = 'user'; // Must start with user after system
-
-  for (const msg of messages) {
-    if (msg.role === expectedRole) {
-      cleaned.push(msg);
-      expectedRole = expectedRole === 'user' ? 'assistant' : 'user';
-    } else if (msg.role === 'user' && expectedRole === 'assistant') {
-      // Two user messages in a row - skip the assistant expectation
-      // Just keep the user message (common when chat history + new message)
-      cleaned.push(msg);
-      expectedRole = 'assistant';
-    }
-    // Skip assistant messages that come before first user message
-  }
-
-  // If we end up with no messages or first isn't user, add a default
-  if (cleaned.length === 0 || cleaned[0].role !== 'user') {
-    return [{ role: 'user', content: messages[messages.length - 1]?.content || 'Hello!' }];
-  }
-
-  return cleaned;
 }
 
 // Fallback responses if API fails

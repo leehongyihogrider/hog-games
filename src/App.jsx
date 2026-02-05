@@ -948,7 +948,8 @@ function App() {
     }
   };
 
-  const t = translations[language];
+  // Cantonese ('yue') uses same written Chinese as Mandarin ('zh'), just different TTS voice
+  const t = translations[language === 'yue' ? 'zh' : language];
 
   return (
     <div className={`min-h-screen bg-slate-100 p-8 ${fontSizeClasses[fontSize]}`}>
@@ -965,7 +966,8 @@ function App() {
                   className="bg-transparent border-none text-3xl font-bold text-gray-700 cursor-pointer outline-none"
                 >
                   <option value="en">English</option>
-                  <option value="zh">中文</option>
+                  <option value="zh">华语</option>
+                  <option value="yue">粤语</option>
                 </select>
               </div>
             </div>
@@ -1028,7 +1030,8 @@ function App() {
                   className="bg-transparent border-none text-3xl font-bold text-gray-700 cursor-pointer outline-none"
                 >
                   <option value="en">English</option>
-                  <option value="zh">中文</option>
+                  <option value="zh">华语</option>
+                  <option value="yue">粤语</option>
                 </select>
               </div>
             </div>

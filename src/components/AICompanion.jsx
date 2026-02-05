@@ -149,7 +149,9 @@ const AICompanion = ({
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
 
-    recognition.lang = language === 'zh' ? 'zh-CN' : 'en-US';
+    // Map language to speech recognition locale
+    const langMap = { 'zh': 'zh-CN', 'yue': 'zh-HK', 'en': 'en-US' };
+    recognition.lang = langMap[language] || 'en-US';
     recognition.continuous = false;
     recognition.interimResults = false;
 
@@ -181,12 +183,14 @@ const AICompanion = ({
   };
 
   // Greeting messages based on context
+  // Cantonese ('yue') uses same written Chinese as Mandarin ('zh'), just spoken differently
   const getGreeting = useCallback(() => {
+    const effectiveLang = language === 'yue' ? 'zh' : language;
     const greetings = {
       en: `Hi ${playerName}! Ready to exercise your brain?`,
       zh: `${playerName}你好! 准备好锻炼大脑了吗?`
     };
-    return greetings[language] || greetings.en;
+    return greetings[effectiveLang] || greetings.en;
   }, [playerName, language]);
 
   // Initial greeting when chat opens
@@ -271,7 +275,7 @@ const AICompanion = ({
           <div>
             <h3 className="text-white font-bold text-2xl">AI Companion</h3>
             <p className="text-purple-100 text-lg">
-              {language === 'zh' ? '我在这里帮助你' : "I'm here to help!"}
+              {['zh', 'yue'].includes(language) ? '我在这里帮助你' : "I'm here to help!"}
             </p>
           </div>
         </div>
@@ -344,7 +348,7 @@ const AICompanion = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={language === 'zh' ? '输入信息...' : 'Type a message...'}
+            placeholder={['zh', 'yue'].includes(language) ? '输入信息...' : 'Type a message...'}
             className="flex-1 p-4 text-xl border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400"
           />
           <button

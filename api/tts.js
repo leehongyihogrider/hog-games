@@ -38,18 +38,25 @@ export default async function handler(req, res) {
   }
 
   // Select voice based on language
-  // Using en-US Neural2 for English (en-SG Neural2 not available), cmn-CN for Chinese
-  const voiceConfig = language === 'zh'
-    ? {
-        languageCode: 'cmn-CN',
-        name: 'cmn-CN-Wavenet-A', // Chinese female voice
-        ssmlGender: 'FEMALE'
-      }
-    : {
-        languageCode: 'en-US',
-        name: 'en-US-Neural2-F', // US English female voice - natural sounding
-        ssmlGender: 'FEMALE'
-      };
+  // Using Chirp 3 HD for highest quality (1M chars free tier!)
+  const voiceConfigs = {
+    'zh': {
+      languageCode: 'cmn-CN',
+      name: 'cmn-CN-Chirp3-HD-Aoede', // Mandarin Chirp HD voice
+      ssmlGender: 'FEMALE'
+    },
+    'yue': {
+      languageCode: 'yue-HK',
+      name: 'yue-HK-Chirp3-HD-Aoede', // Cantonese Chirp HD voice
+      ssmlGender: 'FEMALE'
+    },
+    'en': {
+      languageCode: 'en-AU',
+      name: 'en-AU-Chirp-HD-O', // Australian English - warm, friendly female voice
+      ssmlGender: 'FEMALE'
+    }
+  };
+  const voiceConfig = voiceConfigs[language] || voiceConfigs['en'];
 
   try {
     const response = await fetch(
