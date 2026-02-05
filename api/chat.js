@@ -2,15 +2,38 @@
 // This keeps your API key secure on the server
 
 export default async function handler(req, res) {
+  // Set CORS headers
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+
+  // Handle preflight
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end();
+  }
+
   // Only allow POST requests
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const { messages, context } = req.body;
+  // Parse body if needed
+  let body = req.body;
+  if (typeof body === 'string') {
+    try {
+      body = JSON.parse(body);
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid JSON body' });
+    }
+  }
 
-  if (!messages || !Array.isArray(messages)) {
-    return res.status(400).json({ error: 'Messages array is required' });
+  const { messages, context } = body || {};
+
+  // If no messages, create a default based on context/trigger
+  let finalMessages = messages;
+  if (!finalMessages || !Array.isArray(finalMessages) || finalMessages.length === 0) {
+    // Use context as the trigger message
+    finalMessages = [{ role: 'user', content: context?.trigger || 'Say something encouraging!' }];
   }
 
   // System prompt for the AI companion
@@ -54,7 +77,7 @@ IMPORTANT:
         model: 'aisingapore/Gemma-SEA-LION-v4-27B-IT',
         messages: [
           { role: 'system', content: systemPrompt },
-          ...messages
+          ...finalMessages
         ],
         max_completion_tokens: 100, // Keep responses short
         temperature: 0.7
