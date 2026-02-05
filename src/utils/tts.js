@@ -1,58 +1,118 @@
-// Text-to-Speech utility using Browser Web Speech API
-// Free and works on most modern browsers
+// Text-to-Speech utility using Google Cloud TTS (Neural) with browser fallback
+// Google Cloud TTS provides natural-sounding Singapore English voices
 
 class TTSPlayer {
   constructor() {
-    this.synth = window.speechSynthesis;
     this.enabled = true;
-    this.voice = null;
     this.language = 'en'; // 'en' or 'zh'
-    this.rate = 0.85; // Slightly slower for elderly
-    this.pitch = 1;
-    this.volume = 1;
+    this.audioElement = null;
+    this.useCloudTTS = true; // Try cloud first, fallback to browser
+
+    // Browser TTS fallback
+    this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
+    this.voice = null;
+    this.rate = 0.85;
   }
 
-  // Initialize and find best voice for language
+  // Initialize
   init(language = 'en') {
     this.language = language;
-    this.loadVoice();
+    this.loadBrowserVoice();
   }
 
-  // Load the best available voice for the language
-  loadVoice() {
-    const voices = this.synth.getVoices();
+  // Load browser voice as fallback
+  loadBrowserVoice() {
+    if (!this.synth) return;
 
+    const voices = this.synth.getVoices();
     if (this.language === 'zh') {
-      // Try to find Chinese voice
       this.voice = voices.find(v =>
-        v.lang.includes('zh') ||
-        v.lang.includes('cmn') ||
-        v.name.toLowerCase().includes('chinese')
+        v.lang.includes('zh') || v.lang.includes('cmn')
       ) || null;
     } else {
-      // Find English voice, prefer Singapore/UK/US
       this.voice = voices.find(v =>
-        v.lang === 'en-SG' ||
-        v.name.toLowerCase().includes('singapore')
-      ) || voices.find(v =>
-        v.lang.startsWith('en')
-      ) || null;
+        v.lang === 'en-SG' || v.name.toLowerCase().includes('singapore')
+      ) || voices.find(v => v.lang.startsWith('en')) || null;
     }
   }
 
-  // Speak text
-  speak(text, options = {}) {
-    if (!this.enabled || !text) return Promise.resolve();
+  // Speak text using Google Cloud TTS
+  async speak(text, options = {}) {
+    if (!this.enabled || !text) return;
 
-    // Cancel any ongoing speech
+    // Stop any ongoing speech
     this.stop();
+
+    // Try Google Cloud TTS first
+    if (this.useCloudTTS) {
+      try {
+        const response = await fetch('/api/tts', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text,
+            language: this.language
+          })
+        });
+
+        const data = await response.json();
+
+        if (data.success && data.audioContent) {
+          // Play the audio
+          return this.playAudioBase64(data.audioContent);
+        }
+
+        // If API says use fallback, switch to browser TTS
+        if (data.useFallback) {
+          console.log('Google TTS unavailable, using browser fallback');
+          return this.speakBrowserFallback(text, options);
+        }
+      } catch (error) {
+        console.error('Google TTS error:', error);
+        // Fall back to browser TTS
+        return this.speakBrowserFallback(text, options);
+      }
+    }
+
+    // Use browser TTS if cloud is disabled
+    return this.speakBrowserFallback(text, options);
+  }
+
+  // Play base64 encoded audio
+  playAudioBase64(base64Audio) {
+    return new Promise((resolve, reject) => {
+      try {
+        // Create audio element
+        this.audioElement = new Audio();
+        this.audioElement.src = `data:audio/mp3;base64,${base64Audio}`;
+
+        this.audioElement.onended = () => {
+          this.audioElement = null;
+          resolve();
+        };
+
+        this.audioElement.onerror = (e) => {
+          console.error('Audio playback error:', e);
+          this.audioElement = null;
+          reject(e);
+        };
+
+        this.audioElement.play().catch(reject);
+      } catch (error) {
+        reject(error);
+      }
+    });
+  }
+
+  // Browser TTS fallback
+  speakBrowserFallback(text, options = {}) {
+    if (!this.synth) return Promise.resolve();
 
     return new Promise((resolve) => {
       const utterance = new SpeechSynthesisUtterance(text);
 
-      // Reload voices if not loaded yet (some browsers load async)
       if (!this.voice) {
-        this.loadVoice();
+        this.loadBrowserVoice();
       }
 
       if (this.voice) {
@@ -61,8 +121,8 @@ class TTSPlayer {
 
       utterance.lang = this.language === 'zh' ? 'zh-CN' : 'en-US';
       utterance.rate = options.rate || this.rate;
-      utterance.pitch = options.pitch || this.pitch;
-      utterance.volume = options.volume || this.volume;
+      utterance.pitch = options.pitch || 1;
+      utterance.volume = options.volume || 1;
 
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();
@@ -73,22 +133,23 @@ class TTSPlayer {
 
   // Stop speaking
   stop() {
-    this.synth.cancel();
-  }
+    // Stop audio element
+    if (this.audioElement) {
+      this.audioElement.pause();
+      this.audioElement.currentTime = 0;
+      this.audioElement = null;
+    }
 
-  // Pause speaking
-  pause() {
-    this.synth.pause();
-  }
-
-  // Resume speaking
-  resume() {
-    this.synth.resume();
+    // Stop browser TTS
+    if (this.synth) {
+      this.synth.cancel();
+    }
   }
 
   // Check if currently speaking
   isSpeaking() {
-    return this.synth.speaking;
+    return !!(this.audioElement && !this.audioElement.paused) ||
+           (this.synth && this.synth.speaking);
   }
 
   // Enable/disable TTS
@@ -111,27 +172,22 @@ class TTSPlayer {
   // Set language
   setLanguage(lang) {
     this.language = lang;
-    this.loadVoice();
+    this.loadBrowserVoice();
   }
 
-  // Set speech rate (0.5 to 2, default 0.85 for elderly)
-  setRate(rate) {
-    this.rate = Math.max(0.5, Math.min(2, rate));
-  }
-
-  // Get available voices
-  getVoices() {
-    return this.synth.getVoices();
+  // Set whether to use cloud TTS
+  setUseCloudTTS(useCloud) {
+    this.useCloudTTS = useCloud;
   }
 }
 
 // Create singleton instance
 const ttsPlayer = new TTSPlayer();
 
-// Load voices when they become available (Chrome loads async)
+// Load browser voices when they become available (Chrome loads async)
 if (typeof window !== 'undefined' && window.speechSynthesis) {
   window.speechSynthesis.onvoiceschanged = () => {
-    ttsPlayer.loadVoice();
+    ttsPlayer.loadBrowserVoice();
   };
 }
 
