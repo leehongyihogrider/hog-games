@@ -13,6 +13,7 @@ import QuizGame from './components/QuizGame';
 import Statistics from './components/Statistics';
 import Achievements from './components/Achievements';
 import AdminPanel from './components/AdminPanel';
+import AICompanion from './components/AICompanion';
 import soundPlayer from './utils/sounds';
 import {
   subscribeToLeaderboard,
@@ -1479,6 +1480,16 @@ function App() {
           <Shield size={28} />
           <span className="text-xl font-bold hidden sm:inline">Admin</span>
         </button>
+      )}
+
+      {/* AI Companion - appears during games */}
+      {gameMode === 'single' && currentGame && !['admin', 'statistics', 'achievements'].includes(currentGame) && (
+        <AICompanion
+          playerName={playerName}
+          currentGame={currentGame}
+          language={language}
+          minimized={true}
+        />
       )}
     </div>
   );

@@ -1,0 +1,83 @@
+====================================
+  ELDERLY HOG GAMES - STAFF MANUAL
+====================================
+
+WEBSITE LINK
+------------
+https://hog-games.vercel.app
+(Replace with your actual Vercel URL if different)
+
+
+GETTING STARTED
+---------------
+1. Open the website link above
+2. Enter your name when prompted
+3. Choose any game from the main menu to start playing
+
+
+AVAILABLE GAMES
+---------------
+- Memory Cards     : Match pairs of cards
+- Whack-a-Mole     : Tap moles as they pop up
+- Color Sequence   : Remember and repeat color patterns
+- Math Challenge   : Solve math problems
+- Tic Tac Toe      : Classic game vs computer
+- Connect 4        : Get 4 in a row
+- Word Search      : Find hidden words
+- Rhythm Game      : Tap to the beat
+- Number Sorting   : Arrange numbers in order
+- Quiz Game        : Answer trivia questions
+
+
+SETTINGS (Bottom of screen)
+---------------------------
+- Language    : Switch between English and Chinese
+- Sound       : Turn game sounds on/off
+- Statistics  : View your play history and progress
+- Achievements: See badges you've earned
+- Admin       : Staff-only panel (see below)
+
+
+ACCESSING ADMIN PANEL
+---------------------
+1. Click the "Admin" button at the bottom of the screen
+2. Enter the password: admin123
+3. Click "Enter"
+
+
+ADMIN PANEL FEATURES
+--------------------
+1. QUIZ QUESTIONS
+   - View all quiz questions
+   - Add new questions (fill in question, 4 options, correct answer)
+   - Enable/disable questions
+   - Delete questions
+   - Reorder questions (drag or use arrows)
+
+2. LEADERBOARDS
+   - View high scores for each game
+   - Delete individual scores if needed
+   - Clear entire game leaderboards
+
+3. Click "Back to Games" to exit admin panel
+
+
+DAILY CHALLENGES
+----------------
+- 3 new challenges appear each day
+- Completed challenges show green with a checkmark
+- Progress resets at midnight
+
+
+TIPS FOR STAFF
+--------------
+- Help residents enter their name correctly
+- Start with easier difficulty levels
+- Encourage residents to try different games
+- Check Statistics to track their progress
+- Sound can be turned off if it's disruptive
+
+
+NEED HELP?
+----------
+Contact your IT support or supervisor for technical issues.

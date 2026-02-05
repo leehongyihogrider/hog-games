@@ -74,9 +74,9 @@ const QuizGame = ({ goHome, language, translations, playerName }) => {
 
     if (correct) {
       setScore(prev => prev + 1);
-      soundPlayer.playCorrect();
+      soundPlayer.playSuccess();
     } else {
-      soundPlayer.playWrong();
+      soundPlayer.playError();
     }
   };
 
