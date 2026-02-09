@@ -204,6 +204,9 @@ const AICompanion = ({
     setIsLoading(true);
     setMood('thinking');
     const response = await callAI(prompt);
+
+    // Show text immediately once API responds
+    setIsLoading(false);
     setLastMessage(response);
     setShowBubble(true);
 
@@ -211,7 +214,7 @@ const AICompanion = ({
     const detectedMood = detectMood(response);
     setMood(detectedMood);
 
-    // Speak the response
+    // Speak the response (text is already visible)
     if (ttsEnabled) {
       setIsSpeaking(true);
       await ttsPlayer.speak(response);
@@ -223,7 +226,6 @@ const AICompanion = ({
       setShowBubble(false);
       setMood('idle');
     }, 5000);
-    setIsLoading(false);
   };
 
   // Send message from chat
@@ -237,6 +239,9 @@ const AICompanion = ({
     setMood('thinking');
 
     const response = await callAI(userMessage);
+
+    // Show text immediately once API responds
+    setIsLoading(false);
     setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     setLastMessage(response);
 
@@ -249,8 +254,6 @@ const AICompanion = ({
       await ttsPlayer.speak(response);
       setIsSpeaking(false);
     }
-
-    setIsLoading(false);
 
     // Reset mood after a delay
     setTimeout(() => setMood('idle'), 5000);
