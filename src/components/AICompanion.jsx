@@ -221,11 +221,11 @@ const AICompanion = ({
       setIsSpeaking(false);
     }
 
-    // Hide bubble after 5 seconds and reset mood
+    // Hide bubble after 10 seconds and reset mood
     setTimeout(() => {
       setShowBubble(false);
       setMood('idle');
-    }, 5000);
+    }, 10000);
   };
 
   // Send message from chat
