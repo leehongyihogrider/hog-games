@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { MessageCircle, Volume2, VolumeX, X, Send, Mic, MicOff } from 'lucide-react';
+import { MessageCircle, Volume2, VolumeX, X, Send, Mic, MicOff, Settings } from 'lucide-react';
 import ttsPlayer from '../utils/tts';
+import soundPlayer from '../utils/sounds';
 
 const AICompanion = ({
   playerName = 'friend',
@@ -21,6 +22,48 @@ const AICompanion = ({
   const [isListening, setIsListening] = useState(false);
   const [lastMessage, setLastMessage] = useState('');
   const [showBubble, setShowBubble] = useState(false);
+  const [mood, setMood] = useState('idle'); // idle, thinking, speaking, celebrating, comforting
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const [hasOfferedHelp, setHasOfferedHelp] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [ttsVolume, setTtsVolume] = useState(() => ttsPlayer.getVolume());
+  const [soundVolume, setSoundVolume] = useState(() => soundPlayer.getVolume());
+  const [sessionStartTime] = useState(Date.now());
+  const [lastBreakReminder, setLastBreakReminder] = useState(Date.now());
+
+  // Determine emoji and animation based on current mood/state
+  const getEmojiAndAnimation = () => {
+    if (isLoading) {
+      return { emoji: '🤔', animation: 'ai-thinking' };
+    }
+    if (isSpeaking) {
+      return { emoji: '😊', animation: 'ai-wave' };
+    }
+    if (mood === 'celebrating') {
+      return { emoji: '🎉', animation: 'ai-happy-bounce' };
+    }
+    if (mood === 'comforting') {
+      return { emoji: '🤗', animation: 'ai-wiggle' };
+    }
+    // Default idle state
+    return { emoji: '😊', animation: 'ai-idle-float' };
+  };
+
+  // Check if message is celebratory or comforting
+  const detectMood = (message) => {
+    const celebrationWords = ['well done', 'amazing', 'great', 'fantastic', 'excellent', 'congratulations', 'perfect', 'nice one', 'good job', 'completed', 'finished', 'won', 'winner', 'proud', 'brilliant'];
+    const comfortWords = ['okay', 'no worries', 'try again', 'no rush', 'take your time', 'it\'s alright', 'don\'t worry', 'next time', 'keep going', 'no problem', 'happens'];
+
+    const lowerMessage = message.toLowerCase();
+
+    if (celebrationWords.some(word => lowerMessage.includes(word))) {
+      return 'celebrating';
+    }
+    if (comfortWords.some(word => lowerMessage.includes(word))) {
+      return 'comforting';
+    }
+    return 'idle';
+  };
 
   // Initialize TTS with current language
   useEffect(() => {
@@ -32,9 +75,64 @@ const AICompanion = ({
   useEffect(() => {
     if (onTrigger && !isLoading) {
       console.log('AICompanion: Received trigger:', onTrigger);
+      // Reset activity timer and help flag when there's new activity
+      setLastActivityTime(Date.now());
+      setHasOfferedHelp(false);
       handleAIResponse(onTrigger);
     }
   }, [onTrigger]);
+
+  // Idle detection - offer help if no activity for 45 seconds during a game
+  useEffect(() => {
+    // Only run idle detection when in a game (not menu) and not already loading
+    if (!currentGame || currentGame === 'menu' || isLoading || hasOfferedHelp) {
+      return;
+    }
+
+    const idleCheckInterval = setInterval(() => {
+      const idleTime = Date.now() - lastActivityTime;
+      const IDLE_THRESHOLD = 45000; // 45 seconds
+
+      if (idleTime >= IDLE_THRESHOLD && !hasOfferedHelp) {
+        setHasOfferedHelp(true);
+        const isChineseMode = language === 'zh' || language === 'yue';
+        const idlePrompt = isChineseMode
+          ? `玩家${playerName}在玩${currentGame}时已经有一段时间没有动作了。轻轻地问问他们是否需要帮助，或者是否想休息一下。要温柔、简短。`
+          : `Player ${playerName} has been idle for a while playing ${currentGame}. Gently ask if they need help or want to take a break. Be warm and brief.`;
+        handleAIResponse(idlePrompt);
+      }
+    }, 10000); // Check every 10 seconds
+
+    return () => clearInterval(idleCheckInterval);
+  }, [currentGame, lastActivityTime, hasOfferedHelp, isLoading, language, playerName]);
+
+  // Reset idle state when game changes
+  useEffect(() => {
+    setLastActivityTime(Date.now());
+    setHasOfferedHelp(false);
+  }, [currentGame]);
+
+  // Break reminder - suggest rest after 15 minutes of continuous play
+  useEffect(() => {
+    const BREAK_INTERVAL = 15 * 60 * 1000; // 15 minutes
+
+    const breakCheckInterval = setInterval(() => {
+      const timeSinceLastBreak = Date.now() - lastBreakReminder;
+      const totalSessionTime = Date.now() - sessionStartTime;
+
+      // Only remind if playing for more than 15 minutes since last reminder
+      if (timeSinceLastBreak >= BREAK_INTERVAL && totalSessionTime >= BREAK_INTERVAL && !isLoading) {
+        setLastBreakReminder(Date.now());
+        const isChineseMode = language === 'zh' || language === 'yue';
+        const breakPrompt = isChineseMode
+          ? `玩家${playerName}已经玩了一段时间了。温柔地建议他们休息一下，喝点水，活动活动眼睛。要简短、关心。`
+          : `Player ${playerName} has been playing for a while now. Gently suggest they take a short break, drink some water, or rest their eyes. Be caring and brief.`;
+        handleAIResponse(breakPrompt);
+      }
+    }, 60000); // Check every minute
+
+    return () => clearInterval(breakCheckInterval);
+  }, [lastBreakReminder, sessionStartTime, isLoading, language, playerName]);
 
   // Call the AI API with timeout
   const callAI = async (userMessage, context = {}) => {
@@ -84,21 +182,34 @@ const AICompanion = ({
 
   // Local fallback if API fails
   const getLocalFallback = () => {
-    const fallbacks = [
+    const isChineseMode = language === 'zh' || language === 'yue';
+    const fallbacksEn = [
       "You doing great lah!",
       "Steady, keep going!",
       "Wah, not bad!",
       "Jia you ah!"
     ];
+    const fallbacksZh = [
+      "做得很好！",
+      "继续加油！",
+      "不错哦！",
+      "加油！"
+    ];
+    const fallbacks = isChineseMode ? fallbacksZh : fallbacksEn;
     return fallbacks[Math.floor(Math.random() * fallbacks.length)];
   };
 
   // Handle AI response (for external triggers)
   const handleAIResponse = async (prompt) => {
     setIsLoading(true);
+    setMood('thinking');
     const response = await callAI(prompt);
     setLastMessage(response);
     setShowBubble(true);
+
+    // Set mood based on response content
+    const detectedMood = detectMood(response);
+    setMood(detectedMood);
 
     // Speak the response
     if (ttsEnabled) {
@@ -107,8 +218,11 @@ const AICompanion = ({
       setIsSpeaking(false);
     }
 
-    // Hide bubble after 5 seconds
-    setTimeout(() => setShowBubble(false), 5000);
+    // Hide bubble after 5 seconds and reset mood
+    setTimeout(() => {
+      setShowBubble(false);
+      setMood('idle');
+    }, 5000);
     setIsLoading(false);
   };
 
@@ -120,10 +234,15 @@ const AICompanion = ({
     setInputText('');
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setIsLoading(true);
+    setMood('thinking');
 
     const response = await callAI(userMessage);
     setMessages(prev => [...prev, { role: 'assistant', content: response }]);
     setLastMessage(response);
+
+    // Set mood based on response
+    const detectedMood = detectMood(response);
+    setMood(detectedMood);
 
     if (ttsEnabled) {
       setIsSpeaking(true);
@@ -132,6 +251,9 @@ const AICompanion = ({
     }
 
     setIsLoading(false);
+
+    // Reset mood after a delay
+    setTimeout(() => setMood('idle'), 5000);
   };
 
   // Voice input using Web Speech API
@@ -171,6 +293,20 @@ const AICompanion = ({
   const toggleTTS = () => {
     const newState = ttsPlayer.toggle();
     setTtsEnabled(newState);
+  };
+
+  // Handle TTS volume change
+  const handleTtsVolumeChange = (e) => {
+    const volume = parseFloat(e.target.value);
+    setTtsVolume(volume);
+    ttsPlayer.setVolume(volume);
+  };
+
+  // Handle game sound volume change
+  const handleSoundVolumeChange = (e) => {
+    const volume = parseFloat(e.target.value);
+    setSoundVolume(volume);
+    soundPlayer.setVolume(volume);
   };
 
   // Speak last message again
@@ -248,7 +384,9 @@ const AICompanion = ({
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 z-50 w-24 h-24 bg-gradient-to-br from-purple-500 to-pink-500 rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-transform border-4 border-white"
         >
-          <span className="text-5xl">🤖</span>
+          <span className={`text-5xl ${getEmojiAndAnimation().animation}`}>
+            {getEmojiAndAnimation().emoji}
+          </span>
         </button>
       </>
     );
@@ -271,7 +409,9 @@ const AICompanion = ({
       {/* Header - BIGGER */}
       <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-5 flex items-center justify-between">
         <div className="flex items-center gap-4">
-          <span className="text-5xl">🤖</span>
+          <span className={`text-5xl ${getEmojiAndAnimation().animation}`}>
+            {getEmojiAndAnimation().emoji}
+          </span>
           <div>
             <h3 className="text-white font-bold text-2xl">AI Companion</h3>
             <p className="text-purple-100 text-lg">
@@ -291,6 +431,12 @@ const AICompanion = ({
             )}
           </button>
           <button
+            onClick={() => setShowSettings(!showSettings)}
+            className={`p-3 rounded-full transition-colors ${showSettings ? 'bg-white/40' : 'bg-white/20 hover:bg-white/30'}`}
+          >
+            <Settings className="w-7 h-7 text-white" />
+          </button>
+          <button
             onClick={() => setIsOpen(false)}
             className="p-3 rounded-full bg-white/20 hover:bg-white/30 transition-colors"
           >
@@ -298,6 +444,47 @@ const AICompanion = ({
           </button>
         </div>
       </div>
+
+      {/* Settings Panel */}
+      {showSettings && (
+        <div className="bg-purple-50 p-5 border-b-2 border-purple-200">
+          <h4 className="text-xl font-bold text-purple-800 mb-4">
+            {['zh', 'yue'].includes(language) ? '音量设置' : 'Volume Settings'}
+          </h4>
+          <div className="space-y-4">
+            <div>
+              <label className="flex items-center justify-between text-lg text-gray-700 mb-2">
+                <span>{['zh', 'yue'].includes(language) ? '语音音量' : 'Voice Volume'}</span>
+                <span className="text-purple-600 font-bold">{Math.round(ttsVolume * 100)}%</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={ttsVolume}
+                onChange={handleTtsVolumeChange}
+                className="w-full h-3 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+            </div>
+            <div>
+              <label className="flex items-center justify-between text-lg text-gray-700 mb-2">
+                <span>{['zh', 'yue'].includes(language) ? '游戏音效' : 'Game Sounds'}</span>
+                <span className="text-purple-600 font-bold">{Math.round(soundVolume * 100)}%</span>
+              </label>
+              <input
+                type="range"
+                min="0"
+                max="1"
+                step="0.1"
+                value={soundVolume}
+                onChange={handleSoundVolumeChange}
+                className="w-full h-3 bg-purple-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Messages - BIGGER */}
       <div className="h-80 overflow-y-auto p-5 space-y-4 bg-gray-50">

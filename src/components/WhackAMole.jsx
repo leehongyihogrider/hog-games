@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Hammer, Trophy, Star, Home, PlayCircle, X, RotateCcw } from 'lucide-react';
 import soundPlayer from '../utils/sounds';
 
-const WhackAMole = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName }) => {
+const WhackAMole = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName, onAITrigger }) => {
   const t = translations[language];
   const [difficulty, setDifficulty] = useState(null);
   const [score, setScore] = useState(0);
@@ -13,6 +13,11 @@ const WhackAMole = ({ goHome, language, translations, addToLeaderboard, leaderbo
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [confetti, setConfetti] = useState([]);
+  const [whackCount, setWhackCount] = useState(0);
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 3) + 3); // Random 3-5
+
+  // Get random next trigger interval (3-5 whacks for faster-paced game)
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 3) + 3;
 
   const difficulties = {
     easy: { name: t.easy, speed: 1500, holes: 6, gridCols: 3, displayTime: 2500, maxMoles: 2, spawnCount: 1 },
@@ -105,6 +110,8 @@ const WhackAMole = ({ goHome, language, translations, addToLeaderboard, leaderbo
     setIsPlaying(true);
     setGameOver(false);
     setShowLeaderboard(false);
+    setWhackCount(0);
+    setNextTriggerAt(getNextTriggerInterval());
   };
 
   const endGame = () => {
@@ -118,14 +125,32 @@ const WhackAMole = ({ goHome, language, translations, addToLeaderboard, leaderbo
     const difficultyMultiplier = { easy: 1.0, medium: 1.5, hard: 2.0, crazy: 2.5 };
     const finalScore = Math.round(score * difficultyMultiplier[difficulty]);
     addToLeaderboard('whack', playerName, finalScore, difficulty);
+
+    // AI trigger: ALWAYS on completion
+    if (onAITrigger) {
+      setTimeout(() => {
+        onAITrigger(`Player finished Whack-a-Mole with ${score} hits! Celebrate - "Nice reflexes!" or similar.`);
+      }, 1000);
+    }
   };
 
   const whackMole = (index) => {
     if (activeMoles.includes(index)) {
       // Play whack sound
       soundPlayer.playWhack();
-      setScore(score + 1);
+      const newScore = score + 1;
+      setScore(newScore);
       setActiveMoles(prev => prev.filter(m => m !== index));
+
+      // Track whacks for AI triggers
+      const newWhackCount = whackCount + 1;
+      setWhackCount(newWhackCount);
+
+      // AI trigger: random interval (3-5 whacks) for encouragement
+      if (onAITrigger && newWhackCount >= nextTriggerAt) {
+        onAITrigger(`Player whacked ${newWhackCount} moles so far! Quick encouragement - "Nice!" or "Quick hands!"`);
+        setNextTriggerAt(newWhackCount + getNextTriggerInterval());
+      }
     }
   };
 

@@ -7,11 +7,20 @@ class TTSPlayer {
     this.language = 'en'; // 'en' or 'zh'
     this.audioElement = null;
     this.useCloudTTS = true; // Try cloud first, fallback to browser
+    this.volume = 1.0; // Volume from 0.0 to 1.0
 
     // Browser TTS fallback
     this.synth = typeof window !== 'undefined' ? window.speechSynthesis : null;
     this.voice = null;
     this.rate = 0.85;
+
+    // Load saved volume from localStorage
+    if (typeof window !== 'undefined') {
+      const savedVolume = localStorage.getItem('hogGamesTTSVolume');
+      if (savedVolume !== null) {
+        this.volume = parseFloat(savedVolume);
+      }
+    }
   }
 
   // Initialize
@@ -92,6 +101,7 @@ class TTSPlayer {
         // Create audio element
         this.audioElement = new Audio();
         this.audioElement.src = `data:audio/mp3;base64,${base64Audio}`;
+        this.audioElement.volume = this.volume; // Apply volume
 
         this.audioElement.onended = () => {
           this.audioElement = null;
@@ -131,7 +141,7 @@ class TTSPlayer {
       utterance.lang = langMap[this.language] || 'en-US';
       utterance.rate = options.rate || this.rate;
       utterance.pitch = options.pitch || 1;
-      utterance.volume = options.volume || 1;
+      utterance.volume = this.volume; // Use class volume
 
       utterance.onend = () => resolve();
       utterance.onerror = () => resolve();
@@ -187,6 +197,24 @@ class TTSPlayer {
   // Set whether to use cloud TTS
   setUseCloudTTS(useCloud) {
     this.useCloudTTS = useCloud;
+  }
+
+  // Set volume (0.0 to 1.0)
+  setVolume(volume) {
+    this.volume = Math.max(0, Math.min(1, volume));
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hogGamesTTSVolume', this.volume.toString());
+    }
+    // Update current audio element if playing
+    if (this.audioElement) {
+      this.audioElement.volume = this.volume;
+    }
+  }
+
+  // Get current volume
+  getVolume() {
+    return this.volume;
   }
 }
 

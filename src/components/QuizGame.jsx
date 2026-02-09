@@ -3,7 +3,7 @@ import { HelpCircle, ArrowLeft, Check, X, Trophy, RefreshCw } from 'lucide-react
 import { getEnabledQuizQuestions } from '../firebase';
 import soundPlayer from '../utils/sounds';
 
-const QuizGame = ({ goHome, language, translations, playerName }) => {
+const QuizGame = ({ goHome, language, translations, playerName, onAITrigger }) => {
   const t = translations[language];
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -15,6 +15,10 @@ const QuizGame = ({ goHome, language, translations, playerName }) => {
   const [loading, setLoading] = useState(true);
   const [noQuestions, setNoQuestions] = useState(false);
   const [answers, setAnswers] = useState([]); // Track all answers for review
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 2) + 2); // Random 2-3
+
+  // Get random next trigger interval (2-3 answers)
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 2) + 2;
 
   useEffect(() => {
     loadQuestions();
@@ -64,6 +68,8 @@ const QuizGame = ({ goHome, language, translations, playerName }) => {
     setIsCorrect(correct);
     setShowResult(true);
 
+    const newAnswerCount = answers.length + 1;
+
     // Track this answer
     setAnswers(prev => [...prev, {
       question: currentQuestion.question,
@@ -73,10 +79,23 @@ const QuizGame = ({ goHome, language, translations, playerName }) => {
     }]);
 
     if (correct) {
-      setScore(prev => prev + 1);
+      const newScore = score + 1;
+      setScore(newScore);
       soundPlayer.playSuccess();
+
+      // AI trigger: at intervals for correct answers
+      if (onAITrigger && newAnswerCount >= nextTriggerAt) {
+        onAITrigger(`Player got a correct answer in the quiz! Score is now ${newScore}. Quick praise - "That's right!" or "Smart!"`);
+        setNextTriggerAt(newAnswerCount + getNextTriggerInterval());
+      }
     } else {
       soundPlayer.playError();
+
+      // AI trigger: comfort on wrong answers (every 2 wrong answers)
+      const wrongCount = answers.filter(a => !a.isCorrect).length + 1;
+      if (onAITrigger && wrongCount % 2 === 0) {
+        onAITrigger(`Player got a wrong answer in the quiz. Gentle comfort - "No worries, try the next one!"`);
+      }
     }
   };
 
@@ -85,6 +104,15 @@ const QuizGame = ({ goHome, language, translations, playerName }) => {
       setGameComplete(true);
       if (score + (isCorrect ? 0 : 0) >= questions.length * 0.7) {
         soundPlayer.playLevelVictory();
+      }
+
+      // AI trigger: ALWAYS on quiz completion
+      if (onAITrigger) {
+        const finalScore = score;
+        const percentage = Math.round((finalScore / questions.length) * 100);
+        setTimeout(() => {
+          onAITrigger(`Player completed the quiz with ${finalScore}/${questions.length} (${percentage}%)! Celebrate their effort - "Well done!" or "Good effort!"`);
+        }, 1000);
       }
     } else {
       setCurrentIndex(prev => prev + 1);
@@ -102,6 +130,7 @@ const QuizGame = ({ goHome, language, translations, playerName }) => {
     setScore(0);
     setGameComplete(false);
     setAnswers([]);
+    setNextTriggerAt(getNextTriggerInterval());
     loadQuestions();
   };
 

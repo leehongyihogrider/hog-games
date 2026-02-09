@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { ArrowUpDown, Trophy, Star, Home, RotateCcw, PlayCircle, X } from 'lucide-react';
 import soundPlayer from '../utils/sounds';
 
-const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName }) => {
+const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName, onAITrigger }) => {
   const t = translations[language];
   const [difficulty, setDifficulty] = useState(null);
   const [numbers, setNumbers] = useState([]);
@@ -15,6 +15,10 @@ const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leade
   const [timerInterval, setTimerInterval] = useState(null);
   const [mistakes, setMistakes] = useState(0);
   const [confetti, setConfetti] = useState([]);
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 2) + 2); // Random 2-3
+
+  // Get random next trigger interval (2-3 correct selections)
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 2) + 2;
 
   const createConfetti = () => {
     const colors = ['#FF6B6B', '#4ECDC4', '#45B7D1', '#FFA07A', '#98D8C8', '#F7DC6F', '#BB8FCE', '#85C1E2'];
@@ -62,6 +66,7 @@ const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leade
     setShowLeaderboard(false);
     setTimeElapsed(0);
     setMistakes(0);
+    setNextTriggerAt(getNextTriggerInterval());
 
     // Start timer
     const interval = setInterval(() => {
@@ -92,21 +97,42 @@ const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leade
     if (!isCorrect) {
       // Mistake made - deselect and increment mistake counter
       soundPlayer.playError(); // Wrong number selected
-      setMistakes(prev => prev + 1);
+      const newMistakes = mistakes + 1;
+      setMistakes(newMistakes);
       setSelectedNumbers([]);
+
+      // AI trigger: comfort on mistakes (every 2 mistakes)
+      if (onAITrigger && newMistakes % 2 === 0) {
+        onAITrigger(`Player made ${newMistakes} mistakes in Number Sorting. Gentle comfort - "No rush, try again!"`);
+      }
       return;
     }
 
     // Play click sound for correct selection
     soundPlayer.playClick();
 
+    const isComplete = newSelected.length === numbers.length;
+
+    // AI trigger: at intervals for progress (skip if completing)
+    if (onAITrigger && newSelected.length >= nextTriggerAt && !isComplete) {
+      onAITrigger(`Player selected ${newSelected.length} numbers correctly! Quick encouragement - "That's right!" or "Keep going!"`);
+      setNextTriggerAt(newSelected.length + getNextTriggerInterval());
+    }
+
     // Check if game is complete
-    if (newSelected.length === numbers.length) {
+    if (isComplete) {
       setTimeout(() => {
         soundPlayer.playLevelVictory();
         createConfetti();
       }, 200);
       endGame();
+
+      // AI trigger: ALWAYS on completion
+      if (onAITrigger) {
+        setTimeout(() => {
+          onAITrigger(`Player completed Number Sorting with ${mistakes} mistakes! Celebrate - "All sorted! Well done!"`);
+        }, 1000);
+      }
     }
   };
 

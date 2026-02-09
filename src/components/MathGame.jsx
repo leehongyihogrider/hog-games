@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Calculator, Trophy, Star, Home, RotateCcw, PlayCircle, X } from 'lucide-react';
 import soundPlayer from '../utils/sounds';
 
-const MathGame = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName }) => {
+const MathGame = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName, onAITrigger }) => {
   const t = translations[language];
   const [difficulty, setDifficulty] = useState(null);
   const [score, setScore] = useState(0);
@@ -16,6 +16,10 @@ const MathGame = ({ goHome, language, translations, addToLeaderboard, leaderboar
   const [showTutorial, setShowTutorial] = useState(false);
   const [confetti, setConfetti] = useState([]);
   const [problemsSolved, setProblemsSolved] = useState(0);
+
+  // AI trigger state - trigger every 2-4 correct answers
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 3) + 2);
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 3) + 2;
 
   const difficulties = {
     easy: { name: t.easy, range: 10, operations: ['+', '-'] },
@@ -130,7 +134,14 @@ const MathGame = ({ goHome, language, translations, addToLeaderboard, leaderboar
     setUserAnswer('');
     setFeedback('');
     setProblemsSolved(0); // Reset problems solved counter
+    setNextTriggerAt(getNextTriggerInterval()); // Reset AI trigger interval
     setCurrentProblem(generateProblem(level));
+
+    // AI greeting at game start
+    if (onAITrigger) {
+      const difficultyNames = { easy: 'Easy', medium: 'Medium', hard: 'Hard' };
+      onAITrigger(`Player ${playerName} is starting Math Challenge on ${difficultyNames[level]} difficulty. Give a brief, encouraging start message. Keep it short.`);
+    }
   };
 
   const endGame = () => {
@@ -142,6 +153,11 @@ const MathGame = ({ goHome, language, translations, addToLeaderboard, leaderboar
     createConfetti();
     // Auto-save score with player name (no multiplier needed, already in points per correct)
     addToLeaderboard('math', playerName, score, difficulty);
+
+    // Always trigger AI on game completion
+    if (onAITrigger) {
+      onAITrigger(`Player ${playerName} finished Math Challenge on ${difficulty} difficulty! Final score: ${score} points, solved ${problemsSolved} problems. Celebrate their achievement warmly but briefly.`);
+    }
   };
 
   const checkAnswer = () => {
@@ -151,14 +167,27 @@ const MathGame = ({ goHome, language, translations, addToLeaderboard, leaderboar
     if (numAnswer === currentProblem.answer) {
       // Give points based on difficulty
       const pointsPerCorrect = { easy: 10, medium: 15, hard: 20 };
-      setScore(score + pointsPerCorrect[difficulty]);
+      const newScore = score + pointsPerCorrect[difficulty];
+      setScore(newScore);
       setFeedback('✓');
       setTimeout(() => setFeedback(''), 300);
       // Increment problems solved when answer is correct
-      setProblemsSolved(prev => prev + 1);
+      const newProblemsSolved = problemsSolved + 1;
+      setProblemsSolved(newProblemsSolved);
+
+      // AI trigger at intervals
+      if (onAITrigger && newProblemsSolved >= nextTriggerAt) {
+        onAITrigger(`Player ${playerName} just solved ${newProblemsSolved} math problems correctly in a row! Score is now ${newScore}. Give a brief word of encouragement for their math skills. Keep it short and natural.`);
+        setNextTriggerAt(newProblemsSolved + getNextTriggerInterval());
+      }
     } else {
       setFeedback('✗');
       setTimeout(() => setFeedback(''), 500);
+
+      // AI comfort on wrong answer (occasionally)
+      if (onAITrigger && Math.random() < 0.3) {
+        onAITrigger(`Player ${playerName} got a math problem wrong. The answer was ${currentProblem.answer}. Offer brief comfort and encouragement to keep trying. Keep it short.`);
+      }
     }
 
     setUserAnswer('');

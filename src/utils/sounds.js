@@ -4,6 +4,15 @@ class SoundPlayer {
   constructor() {
     this.audioContext = null;
     this.enabled = true;
+    this.volume = 1.0; // Volume from 0.0 to 1.0
+
+    // Load saved volume from localStorage
+    if (typeof window !== 'undefined') {
+      const savedVolume = localStorage.getItem('hogGamesSoundVolume');
+      if (savedVolume !== null) {
+        this.volume = parseFloat(savedVolume);
+      }
+    }
   }
 
   // Initialize audio context (needed for some browsers)
@@ -14,7 +23,7 @@ class SoundPlayer {
   }
 
   // Play a tone with specific frequency and duration
-  playTone(frequency, duration, type = 'sine', volume = 0.3) {
+  playTone(frequency, duration, type = 'sine', baseVolume = 0.3) {
     if (!this.enabled) return;
 
     this.init();
@@ -28,7 +37,9 @@ class SoundPlayer {
     oscillator.frequency.value = frequency;
     oscillator.type = type;
 
-    gainNode.gain.setValueAtTime(volume, this.audioContext.currentTime);
+    // Apply volume control
+    const adjustedVolume = baseVolume * this.volume;
+    gainNode.gain.setValueAtTime(adjustedVolume, this.audioContext.currentTime);
     gainNode.gain.exponentialRampToValueAtTime(0.01, this.audioContext.currentTime + duration);
 
     oscillator.start(this.audioContext.currentTime);
@@ -183,6 +194,20 @@ class SoundPlayer {
   toggle() {
     this.enabled = !this.enabled;
     return this.enabled;
+  }
+
+  // Set volume (0.0 to 1.0)
+  setVolume(volume) {
+    this.volume = Math.max(0, Math.min(1, volume));
+    // Save to localStorage
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hogGamesSoundVolume', this.volume.toString());
+    }
+  }
+
+  // Get current volume
+  getVolume() {
+    return this.volume;
   }
 }
 

@@ -2,7 +2,7 @@ import { useState, useRef } from 'react';
 import { Zap, Trophy, Star, Home, RotateCcw, PlayCircle, X } from 'lucide-react';
 import soundPlayer from '../utils/sounds';
 
-const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName }) => {
+const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName, onAITrigger }) => {
   const t = translations[language];
   const [difficulty, setDifficulty] = useState(null);
   const [sequence, setSequence] = useState([]);
@@ -17,6 +17,10 @@ const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leade
   const [confetti, setConfetti] = useState([]);
   const [colorClickCounts, setColorClickCounts] = useState({});
   const shouldStopSequence = useRef(false);
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 2) + 2); // Random round 2-3
+
+  // Get random next trigger interval (2-3 rounds)
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 2) + 2;
 
   // Nutrition tips for each color - 3-5 tips per color to avoid repetition
   const nutritionTips = {
@@ -162,6 +166,7 @@ const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leade
     setGameOver(false);
     setShowLeaderboard(false);
     setColorClickCounts({}); // Reset click counts for new game
+    setNextTriggerAt(getNextTriggerInterval());
     setTimeout(() => startNewRound([], level), 500);
   };
 
@@ -224,6 +229,12 @@ const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leade
       // Completed round successfully!
       setIsPlayerTurn(false);
 
+      // AI trigger: at intervals for round completion (skip final round - winGame handles it)
+      if (onAITrigger && round >= nextTriggerAt && round < 10) {
+        onAITrigger(`Player completed round ${round} of Color Sequence! Encouragement - "Good memory!" or "Nice pattern!"`);
+        setNextTriggerAt(round + getNextTriggerInterval());
+      }
+
       if (round >= 10) {
         // Final victory - game complete!
         setTimeout(() => {
@@ -261,6 +272,13 @@ const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leade
     const difficultyMultiplier = { easy: 1.0, medium: 1.5, hard: 2.0 };
     const score = Math.round(round * 100 * difficultyMultiplier[difficulty]);
     addToLeaderboard('sequence', playerName, score, difficulty);
+
+    // AI trigger: comfort on game over (mistake)
+    if (onAITrigger) {
+      setTimeout(() => {
+        onAITrigger(`Player made a mistake at round ${round} in Color Sequence. Gentle comfort - "Good try! Round ${round} is pretty good!"`);
+      }, 1000);
+    }
   };
 
   const winGame = () => {
@@ -271,6 +289,13 @@ const ColorSequence = ({ goHome, language, translations, addToLeaderboard, leade
     const difficultyMultiplier = { easy: 1.0, medium: 1.5, hard: 2.0 };
     const score = Math.round(10 * 100 * difficultyMultiplier[difficulty]);
     addToLeaderboard('sequence', playerName, score, difficulty);
+
+    // AI trigger: ALWAYS on perfect win (all 10 rounds)
+    if (onAITrigger) {
+      setTimeout(() => {
+        onAITrigger(`Player completed all 10 rounds of Color Sequence! Big celebration - "Amazing memory! You got them all!"`);
+      }, 1000);
+    }
   };
 
   const backToLevelSelect = () => {

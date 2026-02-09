@@ -526,6 +526,72 @@ function App() {
   const [playerStats, setPlayerStats] = useState(null);
   const [aiTrigger, setAiTrigger] = useState(null);
 
+  // Inactivity auto-return to menu
+  const [lastActivityTime, setLastActivityTime] = useState(Date.now());
+  const [showInactivityWarning, setShowInactivityWarning] = useState(false);
+  const [warningStartTime, setWarningStartTime] = useState(null);
+  const INACTIVITY_WARNING_TIME = 3 * 60 * 1000; // 3 minutes before warning
+  const INACTIVITY_RETURN_TIME = 30 * 1000; // 30 seconds after warning to return
+
+  // Track user activity (clicks, touches, key presses)
+  useEffect(() => {
+    const updateActivity = () => {
+      setLastActivityTime(Date.now());
+      // If warning is showing and user interacts, dismiss it
+      if (showInactivityWarning) {
+        setShowInactivityWarning(false);
+        setWarningStartTime(null);
+      }
+    };
+
+    // Add event listeners for various user interactions
+    window.addEventListener('click', updateActivity);
+    window.addEventListener('touchstart', updateActivity);
+    window.addEventListener('keydown', updateActivity);
+    window.addEventListener('mousemove', updateActivity);
+
+    return () => {
+      window.removeEventListener('click', updateActivity);
+      window.removeEventListener('touchstart', updateActivity);
+      window.removeEventListener('keydown', updateActivity);
+      window.removeEventListener('mousemove', updateActivity);
+    };
+  }, [showInactivityWarning]);
+
+  // Check for inactivity and show warning / return to menu
+  useEffect(() => {
+    // Only check inactivity when in a game (not on main menu or mode selection)
+    if (!gameMode || !currentGame || currentGame === 'admin') {
+      return;
+    }
+
+    const checkInactivity = () => {
+      const now = Date.now();
+      const timeSinceActivity = now - lastActivityTime;
+
+      // If warning is showing, check if we should return to menu
+      if (showInactivityWarning && warningStartTime) {
+        const timeSinceWarning = now - warningStartTime;
+        if (timeSinceWarning >= INACTIVITY_RETURN_TIME) {
+          // Return to main menu
+          setCurrentGame(null);
+          setShowInactivityWarning(false);
+          setWarningStartTime(null);
+          setLastActivityTime(Date.now());
+        }
+      } else if (timeSinceActivity >= INACTIVITY_WARNING_TIME) {
+        // Show warning
+        setShowInactivityWarning(true);
+        setWarningStartTime(Date.now());
+      }
+    };
+
+    // Check every 5 seconds
+    const intervalId = setInterval(checkInactivity, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [gameMode, currentGame, lastActivityTime, showInactivityWarning, warningStartTime]);
+
   // Function to trigger AI companion with a prompt
   const triggerAI = (prompt) => {
     setAiTrigger(prompt);
@@ -533,16 +599,35 @@ function App() {
     setTimeout(() => setAiTrigger(null), 100);
   };
 
-  // Main menu greeting with random game suggestion
+  // Get time-of-day greeting context
+  const getTimeOfDayContext = () => {
+    const hour = new Date().getHours();
+    if (hour >= 5 && hour < 12) {
+      return { period: 'morning', greeting: 'Good morning', greetingZh: '早上好' };
+    } else if (hour >= 12 && hour < 17) {
+      return { period: 'afternoon', greeting: 'Good afternoon', greetingZh: '下午好' };
+    } else if (hour >= 17 && hour < 21) {
+      return { period: 'evening', greeting: 'Good evening', greetingZh: '晚上好' };
+    } else {
+      return { period: 'night', greeting: 'Hello', greetingZh: '你好' };
+    }
+  };
+
+  // Main menu greeting with random game suggestion and time-of-day awareness
   const [hasGreetedMenu, setHasGreetedMenu] = useState(false);
   useEffect(() => {
     if (gameMode === 'single' && !currentGame && !hasGreetedMenu && playerName) {
       const gameNames = ['Memory Card', 'Whack-a-Mole', 'Color Sequence', 'Word Search', 'Number Sorting', 'Quiz'];
       const randomGame = gameNames[Math.floor(Math.random() * gameNames.length)];
+      const timeContext = getTimeOfDayContext();
 
       // Delay the greeting slightly so the component is mounted
       setTimeout(() => {
-        triggerAI(`Greet ${playerName || 'the player'} warmly on the main menu. Ask what game they want to play today. Maybe suggest trying "${randomGame}" - make it sound fun and casual in Singlish!`);
+        const isChineseMode = language === 'zh' || language === 'yue';
+        const prompt = isChineseMode
+          ? `用"${timeContext.greetingZh}"问候${playerName || '玩家'}，这是${timeContext.period === 'morning' ? '早上' : timeContext.period === 'afternoon' ? '下午' : timeContext.period === 'evening' ? '晚上' : '夜里'}。问他们今天想玩什么游戏，可以建议试试"${randomGame}"。要简短、温暖。`
+          : `Greet ${playerName || 'the player'} with "${timeContext.greeting}" since it's ${timeContext.period}. Ask what game they want to play today. Maybe suggest trying "${randomGame}" - make it sound fun and casual in Singlish! Keep it brief.`;
+        triggerAI(prompt);
         setHasGreetedMenu(true);
       }, 1500);
     }
@@ -550,7 +635,7 @@ function App() {
     if (currentGame) {
       setHasGreetedMenu(false);
     }
-  }, [currentGame, gameMode, playerName, hasGreetedMenu]);
+  }, [currentGame, gameMode, playerName, hasGreetedMenu, language]);
 
   // Generate daily challenges
   const generateDailyChallenges = () => {
@@ -1392,6 +1477,7 @@ function App() {
           addToLeaderboard={addToLeaderboard}
           leaderboard={leaderboard.whack}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1403,6 +1489,7 @@ function App() {
           addToLeaderboard={addToLeaderboard}
           leaderboard={leaderboard.sequence}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1414,6 +1501,7 @@ function App() {
           addToLeaderboard={addToLeaderboard}
           leaderboard={leaderboard.math}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1441,6 +1529,7 @@ function App() {
           addToLeaderboard={addToLeaderboard}
           leaderboard={leaderboard.wordsearch}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1452,6 +1541,7 @@ function App() {
           addToLeaderboard={addToLeaderboard}
           leaderboard={leaderboard.numbersorting}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1469,6 +1559,7 @@ function App() {
           language={language}
           translations={translations}
           playerName={playerName}
+          onAITrigger={triggerAI}
         />
       )}
 
@@ -1522,6 +1613,38 @@ function App() {
           minimized={true}
           onTrigger={aiTrigger}
         />
+      )}
+
+      {/* Inactivity Warning Modal */}
+      {showInactivityWarning && (
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[100]">
+          <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-2xl w-full mx-6 text-center border-4 border-yellow-400 animate-pulse">
+            <div className="text-8xl mb-6">👋</div>
+            <h2 className="text-5xl font-bold text-gray-800 mb-4">
+              {language === 'zh' || language === 'yue' ? '你还在吗？' : 'Are you still there?'}
+            </h2>
+            <p className="text-3xl text-gray-600 mb-8">
+              {language === 'zh' || language === 'yue'
+                ? '点击任何地方继续玩游戏'
+                : 'Tap anywhere to continue playing'}
+            </p>
+            <p className="text-2xl text-yellow-600 mb-8">
+              {language === 'zh' || language === 'yue'
+                ? '如果没有反应，将自动返回主菜单...'
+                : 'Returning to main menu soon if no response...'}
+            </p>
+            <button
+              onClick={() => {
+                setShowInactivityWarning(false);
+                setWarningStartTime(null);
+                setLastActivityTime(Date.now());
+              }}
+              className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-white px-12 py-6 rounded-2xl text-4xl font-bold transition-all transform hover:scale-105 shadow-xl"
+            >
+              {language === 'zh' || language === 'yue' ? '我还在！继续玩' : "I'm here! Keep playing"}
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Search, Trophy, Star, Home, PlayCircle, X, RotateCcw } from 'lucide-react';
 import soundPlayer from '../utils/sounds';
 
-const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName }) => {
+const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderboard, playerName, onAITrigger }) => {
   const t = translations[language];
   const [difficulty, setDifficulty] = useState(null);
   const [grid, setGrid] = useState([]);
@@ -16,6 +16,10 @@ const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderbo
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [timerInterval, setTimerInterval] = useState(null);
   const [confetti, setConfetti] = useState([]);
+  const [nextTriggerAt, setNextTriggerAt] = useState(() => Math.floor(Math.random() * 2) + 1); // Trigger at 1-2 words
+
+  // Get random next trigger interval (1-2 words for word search)
+  const getNextTriggerInterval = () => Math.floor(Math.random() * 2) + 1;
 
   // Confetti creation function
   const createConfetti = () => {
@@ -238,6 +242,7 @@ const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderbo
     setGameOver(false);
     setShowLeaderboard(false);
     setTimeElapsed(0);
+    setNextTriggerAt(getNextTriggerInterval());
 
     // Start timer
     const interval = setInterval(() => {
@@ -315,12 +320,27 @@ const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderbo
       const newFoundWords = [...foundWords, selectedWord];
       setFoundWords(newFoundWords);
 
-      if (newFoundWords.length === words.length) {
+      const isComplete = newFoundWords.length === words.length;
+
+      // AI trigger: at intervals for word finds (skip if completing - completion trigger handles it)
+      if (onAITrigger && newFoundWords.length >= nextTriggerAt && !isComplete) {
+        onAITrigger(`Player found the word "${selectedWord}"! Quick encouragement like "Good eye!" or "Nice find!"`);
+        setNextTriggerAt(newFoundWords.length + getNextTriggerInterval());
+      }
+
+      if (isComplete) {
         setTimeout(() => {
           soundPlayer.playLevelVictory();
           createConfetti();
         }, 300);
         endGame();
+
+        // AI trigger: ALWAYS on completion
+        if (onAITrigger) {
+          setTimeout(() => {
+            onAITrigger(`Player completed Word Search! Found all ${words.length} words. Celebrate - "All done! Well spotted!"`);
+          }, 1000);
+        }
       }
     } else {
       // Wrong word or already found
