@@ -35,19 +35,19 @@ const AICompanion = ({
   // Determine emoji and animation based on current mood/state
   const getEmojiAndAnimation = () => {
     if (isLoading) {
-      return { emoji: 'ðŸ¤”', animation: 'ai-thinking' };
+      return { emoji: '🤔', animation: 'ai-thinking' };
     }
     if (isSpeaking) {
-      return { emoji: 'ðŸ˜Š', animation: 'ai-wave' };
+      return { emoji: '😊', animation: 'ai-wave' };
     }
     if (mood === 'celebrating') {
-      return { emoji: 'ðŸŽ‰', animation: 'ai-happy-bounce' };
+      return { emoji: '🎉', animation: 'ai-happy-bounce' };
     }
     if (mood === 'comforting') {
-      return { emoji: 'ðŸ¤—', animation: 'ai-wiggle' };
+      return { emoji: '🤗', animation: 'ai-wiggle' };
     }
     // Default idle state
-    return { emoji: 'ðŸ˜Š', animation: 'ai-idle-float' };
+    return { emoji: '😊', animation: 'ai-idle-float' };
   };
 
   // Check if message is celebratory or comforting
@@ -98,7 +98,7 @@ const AICompanion = ({
         setHasOfferedHelp(true);
         const isChineseMode = language === 'zh' || language === 'yue';
         const idlePrompt = isChineseMode
-          ? `çŽ©å®¶${playerName}åœ¨çŽ©${currentGame}æ—¶å·²ç»æœ‰ä¸€æ®µæ—¶é—´æ²¡æœ‰åŠ¨ä½œäº†ã€‚è½»è½»åœ°é—®é—®ä»–ä»¬æ˜¯å¦éœ€è¦å¸®åŠ©ï¼Œæˆ–è€…æ˜¯å¦æƒ³ä¼‘æ¯ä¸€ä¸‹ã€‚è¦æ¸©æŸ”ã€ç®€çŸ­ã€‚`
+          ? `玩家${playerName}在玩${currentGame}时已经有一段时间没动作了。请温柔地问他们是否需要帮助，或想休息一下。要简短、关心。`
           : `Player ${playerName} has been idle for a while playing ${currentGame}. Gently ask if they need help or want to take a break. Be warm and brief.`;
         handleAIResponse(idlePrompt);
       }
@@ -126,7 +126,7 @@ const AICompanion = ({
         setLastBreakReminder(Date.now());
         const isChineseMode = language === 'zh' || language === 'yue';
         const breakPrompt = isChineseMode
-          ? `çŽ©å®¶${playerName}å·²ç»çŽ©äº†ä¸€æ®µæ—¶é—´äº†ã€‚æ¸©æŸ”åœ°å»ºè®®ä»–ä»¬ä¼‘æ¯ä¸€ä¸‹ï¼Œå–ç‚¹æ°´ï¼Œæ´»åŠ¨æ´»åŠ¨çœ¼ç›ã€‚è¦ç®€çŸ­ã€å…³å¿ƒã€‚`
+          ? `玩家${playerName}已经玩了一段时间了。请温柔地建议他们休息一下，喝点水，活动眼睛。要简短、关心。`
           : `Player ${playerName} has been playing for a while now. Gently suggest they take a short break, drink some water, or rest their eyes. Be caring and brief.`;
         handleAIResponse(breakPrompt);
       }
@@ -194,10 +194,10 @@ const AICompanion = ({
       "Jia you ah!"
     ];
     const fallbacksZh = [
-      "åšå¾—å¾ˆå¥½ï¼",
-      "ç»§ç»­åŠ æ²¹ï¼",
-      "ä¸é”™å“¦ï¼",
-      "åŠ æ²¹ï¼"
+      "做得很好！",
+      "继续加油！",
+      "不错哦！",
+      "加油！"
     ];
     const fallbacks = isChineseMode ? fallbacksZh : fallbacksEn;
     return fallbacks[Math.floor(Math.random() * fallbacks.length)];
@@ -331,7 +331,7 @@ const AICompanion = ({
     const effectiveLang = language === 'yue' ? 'zh' : language;
     const greetings = {
       en: `Hi ${playerName}! Ready to exercise your brain?`,
-      zh: `${playerName}ä½ å¥½! å‡†å¤‡å¥½é”»ç‚¼å¤§è„‘äº†å—?`
+      zh: `${playerName}你好！准备好锻炼大脑了吗？`
     };
     return greetings[effectiveLang] || greetings.en;
   }, [playerName, language]);
@@ -422,7 +422,7 @@ const AICompanion = ({
           <div>
             <h3 className="text-white font-bold text-2xl">AI Companion</h3>
             <p className="text-purple-100 text-lg">
-              {['zh', 'yue'].includes(language) ? 'æˆ‘åœ¨è¿™é‡Œå¸®åŠ©ä½ ' : "I'm here to help!"}
+              {['zh', 'yue'].includes(language) ? '我在这里帮助你' : "I'm here to help!"}
             </p>
           </div>
         </div>
@@ -456,12 +456,12 @@ const AICompanion = ({
       {showSettings && (
         <div className="bg-purple-50 p-5 border-b-2 border-purple-200">
           <h4 className="text-xl font-bold text-purple-800 mb-4">
-            {['zh', 'yue'].includes(language) ? 'éŸ³é‡è®¾ç½®' : 'Volume Settings'}
+            {['zh', 'yue'].includes(language) ? '音量设置' : 'Volume Settings'}
           </h4>
           <div className="space-y-4">
             <div>
               <label className="flex items-center justify-between text-lg text-gray-700 mb-2">
-                <span>{['zh', 'yue'].includes(language) ? 'è¯­éŸ³éŸ³é‡' : 'Voice Volume'}</span>
+                <span>{['zh', 'yue'].includes(language) ? '语音音量' : 'Voice Volume'}</span>
                 <span className="text-purple-600 font-bold">{Math.round(ttsVolume * 100)}%</span>
               </label>
               <input
@@ -476,7 +476,7 @@ const AICompanion = ({
             </div>
             <div>
               <label className="flex items-center justify-between text-lg text-gray-700 mb-2">
-                <span>{['zh', 'yue'].includes(language) ? 'æ¸¸æˆéŸ³æ•ˆ' : 'Game Sounds'}</span>
+                <span>{['zh', 'yue'].includes(language) ? '游戏音效' : 'Game Sounds'}</span>
                 <span className="text-purple-600 font-bold">{Math.round(soundVolume * 100)}%</span>
               </label>
               <input
@@ -542,7 +542,7 @@ const AICompanion = ({
             value={inputText}
             onChange={(e) => setInputText(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
-            placeholder={['zh', 'yue'].includes(language) ? 'è¾“å…¥ä¿¡æ¯...' : 'Type a message...'}
+            placeholder={['zh', 'yue'].includes(language) ? '输入信息...' : 'Type a message...'}
             className="flex-1 p-4 text-xl border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400"
           />
           <button
