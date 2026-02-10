@@ -327,10 +327,6 @@ const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leade
   }
 
   const currentDiff = difficulties[difficulty];
-  const correctOrder = [...numbers].sort((a, b) =>
-    sortOrder === 'ascending' ? a - b : b - a
-  );
-
   return (
     <div className="flex flex-col items-center justify-center min-h-screen">
       <div className="bg-white rounded-3xl shadow-2xl p-12 max-w-6xl w-full">
@@ -486,3 +482,4 @@ const NumberSorting = ({ goHome, language, translations, addToLeaderboard, leade
 };
 
 export default NumberSorting;
+

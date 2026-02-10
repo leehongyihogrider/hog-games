@@ -1,11 +1,41 @@
+﻿/* global process */
 // Vercel Serverless Function for Claude API (Anthropic)
 // This keeps your API key secure on the server
+const CHAT_RATE_LIMIT_WINDOW_MS = Number(process.env.CHAT_RATE_LIMIT_WINDOW_MS || 60000);
+const CHAT_RATE_LIMIT_MAX = Number(process.env.CHAT_RATE_LIMIT_MAX || 30);
+const chatRateLimit = new Map();
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.headers['x-real-ip'] || 'unknown';
+}
+
+function isRateLimited(store, key, windowMs, maxRequests) {
+  const now = Date.now();
+  const current = store.get(key);
+
+  if (!current || now - current.windowStart > windowMs) {
+    store.set(key, { windowStart: now, count: 1 });
+    return false;
+  }
+
+  current.count += 1;
+  if (current.count > maxRequests) {
+    return true;
+  }
+
+  store.set(key, current);
+  return false;
+}
 
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Client-Key');
 
   // Handle preflight
   if (req.method === 'OPTIONS') {
@@ -17,12 +47,26 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+
+  // Optional shared client key guard (enable by setting API_CLIENT_KEY)
+  if (process.env.API_CLIENT_KEY) {
+    const clientKey = req.headers['x-client-key'];
+    if (clientKey !== process.env.API_CLIENT_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  // Basic per-IP rate limiting
+  const clientIp = getClientIp(req);
+  if (isRateLimited(chatRateLimit, clientIp, CHAT_RATE_LIMIT_WINDOW_MS, CHAT_RATE_LIMIT_MAX)) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
   // Parse body if needed
   let body = req.body;
   if (typeof body === 'string') {
     try {
       body = JSON.parse(body);
-    } catch (e) {
+    } catch {
       return res.status(400).json({ error: 'Invalid JSON body' });
     }
   }
@@ -60,39 +104,39 @@ export default async function handler(req, res) {
 
   // System prompt for the AI companion - language-aware
   const systemPrompt = isChineseMode
-    ? `你是一个温暖、友好的AI伙伴，陪伴新加坡老人玩大脑训练游戏。
+    ? `ä½ æ˜¯ä¸€ä¸ªæ¸©æš–ã€å‹å¥½çš„AIä¼™ä¼´ï¼Œé™ªä¼´æ–°åŠ å¡è€äººçŽ©å¤§è„‘è®­ç»ƒæ¸¸æˆã€‚
 
-个性和语言：
-- 用简单、亲切的中文说话，像家人一样温暖
-- 回复要简短（最多1-2句话）- 老人更喜欢简洁、清晰的信息
-- 用简单的词语，要有耐心，不要催促他们
-- 可以偶尔用新加坡式的表达，但要自然
+ä¸ªæ€§å’Œè¯­è¨€ï¼š
+- ç”¨ç®€å•ã€äº²åˆ‡çš„ä¸­æ–‡è¯´è¯ï¼Œåƒå®¶äººä¸€æ ·æ¸©æš–
+- å›žå¤è¦ç®€çŸ­ï¼ˆæœ€å¤š1-2å¥è¯ï¼‰- è€äººæ›´å–œæ¬¢ç®€æ´ã€æ¸…æ™°çš„ä¿¡æ¯
+- ç”¨ç®€å•çš„è¯è¯­ï¼Œè¦æœ‰è€å¿ƒï¼Œä¸è¦å‚¬ä¿ƒä»–ä»¬
+- å¯ä»¥å¶å°”ç”¨æ–°åŠ å¡å¼çš„è¡¨è¾¾ï¼Œä½†è¦è‡ªç„¶
 
-背景信息：
-- 当前游戏：${context?.game || '主菜单'}
-- 玩家名字：${context?.playerName || '朋友'}
-- 游戏状态：${context?.state || '空闲'}
-- 分数/进度：${context?.score || '无'}
+èƒŒæ™¯ä¿¡æ¯ï¼š
+- å½“å‰æ¸¸æˆï¼š${context?.game || 'ä¸»èœå•'}
+- çŽ©å®¶åå­—ï¼š${context?.playerName || 'æœ‹å‹'}
+- æ¸¸æˆçŠ¶æ€ï¼š${context?.state || 'ç©ºé—²'}
+- åˆ†æ•°/è¿›åº¦ï¼š${context?.score || 'æ— '}
 
-回复例子：
-- 鼓励："很好！继续加油！"
-- 提示："不急，慢慢来。"
-- 庆祝："太棒了！你完成了！"
-- 安慰："没关系，再试一次就好。"
-- 提醒："记得喝点水哦！"
+å›žå¤ä¾‹å­ï¼š
+- é¼“åŠ±ï¼š"å¾ˆå¥½ï¼ç»§ç»­åŠ æ²¹ï¼"
+- æç¤ºï¼š"ä¸æ€¥ï¼Œæ…¢æ…¢æ¥ã€‚"
+- åº†ç¥ï¼š"å¤ªæ£’äº†ï¼ä½ å®Œæˆäº†ï¼"
+- å®‰æ…°ï¼š"æ²¡å…³ç³»ï¼Œå†è¯•ä¸€æ¬¡å°±å¥½ã€‚"
+- æé†’ï¼š"è®°å¾—å–ç‚¹æ°´å“¦ï¼"
 
-重要 - TTS兼容性：
-- 绝对不要使用表情符号 - 文字转语音会逐字读出
-- 绝对不要使用星号包裹的动作词如*鼓掌*或*欢呼* - TTS会读出来
-- 绝对不要使用特殊字符或符号
-- 只写自然朗读时听起来正常的纯文本
-- 不要用括号表达如（笑）或（微笑）
+é‡è¦ - TTSå…¼å®¹æ€§ï¼š
+- ç»å¯¹ä¸è¦ä½¿ç”¨è¡¨æƒ…ç¬¦å· - æ–‡å­—è½¬è¯­éŸ³ä¼šé€å­—è¯»å‡º
+- ç»å¯¹ä¸è¦ä½¿ç”¨æ˜Ÿå·åŒ…è£¹çš„åŠ¨ä½œè¯å¦‚*é¼“æŽŒ*æˆ–*æ¬¢å‘¼* - TTSä¼šè¯»å‡ºæ¥
+- ç»å¯¹ä¸è¦ä½¿ç”¨ç‰¹æ®Šå­—ç¬¦æˆ–ç¬¦å·
+- åªå†™è‡ªç„¶æœ—è¯»æ—¶å¬èµ·æ¥æ­£å¸¸çš„çº¯æ–‡æœ¬
+- ä¸è¦ç”¨æ‹¬å·è¡¨è¾¾å¦‚ï¼ˆç¬‘ï¼‰æˆ–ï¼ˆå¾®ç¬‘ï¼‰
 
-重点：
-- 真诚、温暖，不要太夸张
-- 像真人一样说话
-- 如果他们卡住了，轻轻提供帮助
-- 真诚地庆祝他们的进步`
+é‡ç‚¹ï¼š
+- çœŸè¯šã€æ¸©æš–ï¼Œä¸è¦å¤ªå¤¸å¼ 
+- åƒçœŸäººä¸€æ ·è¯´è¯
+- å¦‚æžœä»–ä»¬å¡ä½äº†ï¼Œè½»è½»æä¾›å¸®åŠ©
+- çœŸè¯šåœ°åº†ç¥ä»–ä»¬çš„è¿›æ­¥`
     : `You are a warm, friendly AI companion for elderly Singaporeans playing brain training games.
 
 PERSONALITY & LANGUAGE:
@@ -233,49 +277,49 @@ function getFallbackResponse(context) {
 
   const fallbacksZh = {
     'menu': [
-      "今天想玩什么游戏？",
-      "这么多游戏可以选！想玩哪个？",
-      "来锻炼大脑吧！选一个游戏。"
+      "ä»Šå¤©æƒ³çŽ©ä»€ä¹ˆæ¸¸æˆï¼Ÿ",
+      "è¿™ä¹ˆå¤šæ¸¸æˆå¯ä»¥é€‰ï¼æƒ³çŽ©å“ªä¸ªï¼Ÿ",
+      "æ¥é”»ç‚¼å¤§è„‘å§ï¼é€‰ä¸€ä¸ªæ¸¸æˆã€‚"
     ],
     'memory': [
-      "慢慢来，不急！",
-      "很好！继续加油。",
-      "试试翻另一张牌。"
+      "æ…¢æ…¢æ¥ï¼Œä¸æ€¥ï¼",
+      "å¾ˆå¥½ï¼ç»§ç»­åŠ æ²¹ã€‚",
+      "è¯•è¯•ç¿»å¦ä¸€å¼ ç‰Œã€‚"
     ],
     'whack': [
-      "快点打地鼠！",
-      "你可以的！",
-      "反应真快！"
+      "å¿«ç‚¹æ‰“åœ°é¼ ï¼",
+      "ä½ å¯ä»¥çš„ï¼",
+      "ååº”çœŸå¿«ï¼"
     ],
     'math': [
-      "你可以的！",
-      "慢慢算，不急。",
-      "算得真好！"
+      "ä½ å¯ä»¥çš„ï¼",
+      "æ…¢æ…¢ç®—ï¼Œä¸æ€¥ã€‚",
+      "ç®—å¾—çœŸå¥½ï¼"
     ],
     'sequence': [
-      "仔细看！",
-      "记忆力真好！",
-      "试着记住顺序。"
+      "ä»”ç»†çœ‹ï¼",
+      "è®°å¿†åŠ›çœŸå¥½ï¼",
+      "è¯•ç€è®°ä½é¡ºåºã€‚"
     ],
     'wordsearch': [
-      "仔细看字母。",
-      "找词找得好！",
-      "继续找！"
+      "ä»”ç»†çœ‹å­—æ¯ã€‚",
+      "æ‰¾è¯æ‰¾å¾—å¥½ï¼",
+      "ç»§ç»­æ‰¾ï¼"
     ],
     'numbersorting': [
-      "仔细排序！",
-      "越来越快了！",
-      "排序能力真棒！"
+      "ä»”ç»†æŽ’åºï¼",
+      "è¶Šæ¥è¶Šå¿«äº†ï¼",
+      "æŽ’åºèƒ½åŠ›çœŸæ£’ï¼"
     ],
     'quiz': [
-      "仔细想想！",
-      "不急，慢慢来。",
-      "你知道答案的，想一想！"
+      "ä»”ç»†æƒ³æƒ³ï¼",
+      "ä¸æ€¥ï¼Œæ…¢æ…¢æ¥ã€‚",
+      "ä½ çŸ¥é“ç­”æ¡ˆçš„ï¼Œæƒ³ä¸€æƒ³ï¼"
     ],
     'default': [
-      "做得很好！",
-      "继续加油！",
-      "真棒！"
+      "åšå¾—å¾ˆå¥½ï¼",
+      "ç»§ç»­åŠ æ²¹ï¼",
+      "çœŸæ£’ï¼"
     ]
   };
 
@@ -283,3 +327,6 @@ function getFallbackResponse(context) {
   const responses = fallbacks[context?.game] || fallbacks.default;
   return responses[Math.floor(Math.random() * responses.length)];
 }
+
+
+

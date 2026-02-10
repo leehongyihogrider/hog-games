@@ -24,8 +24,6 @@ import {
   saveDailyChallenges,
   updateChallengeCompletion,
   incrementChallengesCompleted,
-  deleteLeaderboardEntry,
-  clearGameLeaderboard
 } from './firebase';
 import './App.css';
 
@@ -52,7 +50,6 @@ const translations = {
     pairs: 'Pairs',
     holes: 'Holes',
     slow: 'Slow',
-    fast: 'Fast',
     colors: 'Colors',
     tip: 'Tip',
     memoryTip: 'Match cards to learn important daily safety reminders!',
@@ -74,10 +71,8 @@ const translations = {
     whackTip: 'Tap the moles as they pop up! You have 30 seconds. The faster you tap, the higher your score!',
     sequenceTip: 'Watch the sequence of colors light up, then repeat it by tapping! Each round adds one more color.',
     moves: 'Moves',
-    movesCount: 'moves',
     fewerMovesBetter: 'Fewer moves is better!',
     youWon: 'You Won!',
-    completedIn: 'Completed in',
     movesCount: 'moves!',
     tryAnother: 'Try Another Level',
     tapCards: 'Tap cards to flip them and find matching pairs!',
@@ -99,7 +94,6 @@ const translations = {
     skip: 'Skip',
     leaderboard: 'Leaderboard',
     topScores: 'Top Scores',
-    player: 'Player',
     date: 'Date',
     noScores: 'No scores yet! Be the first!',
     viewLeaderboard: 'View Leaderboard',
@@ -147,19 +141,15 @@ const translations = {
     back: 'Back',
     wordSearch: 'Word Search',
     words: 'words',
-    found: 'Found',
     wordsToFind: 'Words to Find',
     dragToSelect: 'Drag across letters to select a word!',
     tapToSelect: 'Tap letters in order to select a word, then tap Submit!',
     wordSearchTip: 'Tap letters in order to select a word, then tap Submit!',
     selected: 'Selected',
-    clear: 'Clear',
     time: 'Time',
-    completedIn: 'Completed in',
     fasterIsBetter: 'Faster time is better!',
     rhythmBattle: 'Rhythm Battle',
     rhythmTip: 'Tap the tiles when they reach the GREEN TARGET ZONE at the bottom! Perfect timing = more points!',
-    player: 'Player',
     enterPlayerNames: 'Enter player names',
     numberSorting: 'Number Sorting',
     numbers: 'numbers',
@@ -245,14 +235,10 @@ const translations = {
     challengeWordSearchEasy: 'Complete Word Search Easy under 2 minutes',
     challengeMathMedium: 'Score 15+ in Math Challenge Medium',
     challengeNumberSortingEasy: 'Get 3 stars in Number Sorting Easy',
-
-    clear: 'Clear',
     conflicts: 'conflicts',
-    found: 'found',
     fixConflicts: 'Red cells have duplicates in their row, column, or box',
 
     normal: 'Normal',
-    fast: 'Fast',
     pause: 'Pause',
     resume: 'Resume',
     paused: 'Paused',
@@ -398,11 +384,9 @@ const translations = {
     selected: '已选择',
     clear: '清除',
     time: '时间',
-    completedIn: '完成时间',
     fasterIsBetter: '时间越短越好！',
     rhythmBattle: '节奏对战',
     rhythmTip: '当方块到达底部的绿色目标区域时点击！完美时机=更多分数！',
-    player: '玩家',
     enterPlayerNames: '输入玩家名字',
     numberSorting: '数字排序',
     numbers: '数字',
@@ -514,7 +498,7 @@ function App() {
   const [gameMode, setGameMode] = useState(null); // null, 'single', 'multiplayer'
   const [currentGame, setCurrentGame] = useState(null);
   const [language, setLanguage] = useState('en');
-  const [fontSize, setFontSize] = useState(() => {
+  const [fontSize] = useState(() => {
     return localStorage.getItem('hogGamesFontSize') || 'medium';
   });
   const [playerName, setPlayerName] = useState(() => {
@@ -775,10 +759,6 @@ function App() {
     }
   };
 
-  const handleChangeName = () => {
-    setShowNameEntry(true);
-  };
-
   const handleGuestMode = () => {
     setPlayerName('Guest');
     setIsGuestMode(true);
@@ -813,11 +793,6 @@ function App() {
     setGameMode('multiplayer');
     setPlayerName('Multiplayer');
     setShowNameEntry(false);
-  };
-
-  const handleFontSizeChange = (size) => {
-    setFontSize(size);
-    localStorage.setItem('hogGamesFontSize', size);
   };
 
   const fontSizeClasses = {
@@ -1651,3 +1626,4 @@ function App() {
 }
 
 export default App;
+

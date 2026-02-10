@@ -23,7 +23,6 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
   const [flipped, setFlipped] = useState([]);
   const [matched, setMatched] = useState([]);
   const [moves, setMoves] = useState(0);
-  const [score, setScore] = useState(0);
   const [timeElapsed, setTimeElapsed] = useState(0);
   const [timerStarted, setTimerStarted] = useState(false);
   const [isWon, setIsWon] = useState(false);
@@ -99,7 +98,6 @@ const MemoryGame = ({ goHome, language, translations, addToLeaderboard, leaderbo
     setMatched([]);
     setMoves(0);
     setCurrentReminder(null);
-    setScore(0);
     setTimeElapsed(0);
     setTimerStarted(false);
     setIsWon(false);

@@ -1,5 +1,7 @@
-// Text-to-Speech utility using Google Cloud TTS (Neural) with browser fallback
+﻿// Text-to-Speech utility using Google Cloud TTS (Neural) with browser fallback
 // Google Cloud TTS provides natural-sounding Singapore English voices
+
+import { getApiAuthHeaders } from './apiAuth';
 
 class TTSPlayer {
   constructor() {
@@ -64,7 +66,10 @@ class TTSPlayer {
       try {
         const response = await fetch('/api/tts', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...getApiAuthHeaders()
+          },
           body: JSON.stringify({
             text,
             language: this.language
@@ -229,3 +234,4 @@ if (typeof window !== 'undefined' && window.speechSynthesis) {
 }
 
 export default ttsPlayer;
+

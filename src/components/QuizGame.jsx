@@ -3,7 +3,7 @@ import { HelpCircle, ArrowLeft, Check, X, Trophy, RefreshCw } from 'lucide-react
 import { getEnabledQuizQuestions } from '../firebase';
 import soundPlayer from '../utils/sounds';
 
-const QuizGame = ({ goHome, language, translations, playerName, onAITrigger }) => {
+const QuizGame = ({ goHome, language, translations, onAITrigger }) => {
   const t = translations[language];
   const [questions, setQuestions] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -326,3 +326,4 @@ const QuizGame = ({ goHome, language, translations, playerName, onAITrigger }) =
 };
 
 export default QuizGame;
+

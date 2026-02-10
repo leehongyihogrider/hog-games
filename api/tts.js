@@ -1,11 +1,41 @@
+﻿/* global process */
 // Vercel Serverless Function for Google Cloud Text-to-Speech
 // Returns audio as base64 for playback in browser
+const TTS_RATE_LIMIT_WINDOW_MS = Number(process.env.TTS_RATE_LIMIT_WINDOW_MS || 60000);
+const TTS_RATE_LIMIT_MAX = Number(process.env.TTS_RATE_LIMIT_MAX || 20);
+const ttsRateLimit = new Map();
+
+function getClientIp(req) {
+  const forwarded = req.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string' && forwarded.length > 0) {
+    return forwarded.split(',')[0].trim();
+  }
+  return req.headers['x-real-ip'] || 'unknown';
+}
+
+function isRateLimited(store, key, windowMs, maxRequests) {
+  const now = Date.now();
+  const current = store.get(key);
+
+  if (!current || now - current.windowStart > windowMs) {
+    store.set(key, { windowStart: now, count: 1 });
+    return false;
+  }
+
+  current.count += 1;
+  if (current.count > maxRequests) {
+    return true;
+  }
+
+  store.set(key, current);
+  return false;
+}
 
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, X-Client-Key');
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
@@ -15,12 +45,26 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
+
+  // Optional shared client key guard (enable by setting API_CLIENT_KEY)
+  if (process.env.API_CLIENT_KEY) {
+    const clientKey = req.headers['x-client-key'];
+    if (clientKey !== process.env.API_CLIENT_KEY) {
+      return res.status(401).json({ error: 'Unauthorized' });
+    }
+  }
+
+  // Basic per-IP rate limiting
+  const clientIp = getClientIp(req);
+  if (isRateLimited(ttsRateLimit, clientIp, TTS_RATE_LIMIT_WINDOW_MS, TTS_RATE_LIMIT_MAX)) {
+    return res.status(429).json({ error: 'Too many requests' });
+  }
   // Parse body
   let body = req.body;
   if (typeof body === 'string') {
     try {
       body = JSON.parse(body);
-    } catch (e) {
+    } catch {
       return res.status(400).json({ error: 'Invalid JSON body' });
     }
   }
@@ -103,3 +147,5 @@ export default async function handler(req, res) {
     });
   }
 }
+
+

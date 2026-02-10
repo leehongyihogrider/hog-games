@@ -9,7 +9,6 @@ const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderbo
   const [words, setWords] = useState([]);
   const [foundWords, setFoundWords] = useState([]);
   const [selectedCells, setSelectedCells] = useState([]);
-  const [isSelecting, setIsSelecting] = useState(false);
   const [gameOver, setGameOver] = useState(false);
   const [showLeaderboard, setShowLeaderboard] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
@@ -766,3 +765,4 @@ const WordSearch = ({ goHome, language, translations, addToLeaderboard, leaderbo
 };
 
 export default WordSearch;
+

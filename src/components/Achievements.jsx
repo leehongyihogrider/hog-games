@@ -77,25 +77,6 @@ const Achievements = ({ goHome, language, translations, playerName, stats, daily
     }
   }, [propChallenges]);
 
-  const generateDailyChallenges = () => {
-    const allChallenges = [
-      { id: 'memory_easy_3star', game: 'memory', difficulty: 'easy', target: '3 stars', desc: t.challengeMemoryEasy || 'Get 3 stars in Memory Easy', difficulty_level: 'easy' },
-      { id: 'whack_medium_25', game: 'whack', difficulty: 'medium', target: 'Score 25+', desc: t.challengeWhackMedium || 'Score 25+ in Whack-a-Mole Medium', difficulty_level: 'medium' },
-      { id: 'sequence_hard_complete', game: 'sequence', difficulty: 'hard', target: 'Round 5+', desc: t.challengeSequenceHard || 'Reach round 5+ in Color Sequence Hard', difficulty_level: 'hard' },
-      { id: 'wordsearch_easy_2min', game: 'wordsearch', difficulty: 'easy', target: 'Under 2 min', desc: t.challengeWordSearchEasy || 'Complete Word Search Easy under 2 minutes', difficulty_level: 'easy' },
-      { id: 'math_medium_15', game: 'math', difficulty: 'medium', target: 'Score 15+', desc: t.challengeMathMedium || 'Score 15+ in Math Challenge Medium', difficulty_level: 'medium' },
-      { id: 'numbersorting_easy_3star', game: 'numbersorting', difficulty: 'easy', target: '3 stars', desc: t.challengeNumberSortingEasy || 'Get 3 stars in Number Sorting Easy', difficulty_level: 'easy' },
-    ];
-
-    // Pick 3 random challenges
-    const shuffled = [...allChallenges].sort(() => Math.random() - 0.5);
-    return shuffled.slice(0, 3).map((challenge, index) => ({
-      ...challenge,
-      completed: false,
-      index: index
-    }));
-  };
-
   const categoryColors = {
     starter: 'from-green-500 to-emerald-600',
     mastery: 'from-purple-500 to-indigo-600',
@@ -284,3 +265,4 @@ const Achievements = ({ goHome, language, translations, playerName, stats, daily
 };
 
 export default Achievements;
+
